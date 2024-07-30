@@ -2,8 +2,8 @@
 require_once('../../../config.php');
 require_once('../lib.php');
 require_login();
-@ini_set('memory_limit', '512M');
-@set_time_limit(300);
+@ini_set('memory_limit', '2048M');
+@set_time_limit(600);
 
 $context = context_system::instance();
 require_capability('moodle/site:config', $context);
@@ -74,10 +74,15 @@ foreach ($records as $record) {
 }
 
 if (optional_param('download', '', PARAM_TEXT)) {
+    // Clean the output buffer to fix the headers already sent error
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
     if ($format === 'csv') {
-        attendance_exporttocsv($data, 'certificates_report');
+        export_to_csv($data->tabhead, $data->table, 'certificates_report');
     } else {
-        attendance_exporttotableed($data, 'certificates_report', $format);
+        export_to_spreadsheet($data->tabhead, $data->table, 'certificates_report', $format, 'Certificates Report');
     }
     exit;
 }
