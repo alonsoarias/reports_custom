@@ -90,10 +90,15 @@ foreach ($records as $record) {
 }
 
 if (optional_param('download', '', PARAM_TEXT)) {
+    // Clean the output buffer to fix the headers already sent error
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
     if ($format === 'csv') {
-        attendance_exporttocsv($data, 'progress_report');
+        export_to_csv($data->tabhead, $data->table, 'progress_report');
     } else {
-        attendance_exporttotableed($data, 'progress_report', $format);
+        export_to_spreadsheet($data->tabhead, $data->table, 'progress_report', $format, 'Progress Report');
     }
     exit;
 }
