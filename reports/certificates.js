@@ -7,6 +7,9 @@ $(document).ready(function() {
             success: function(data) {
                 $('#reportData').html($(data).find('#reportData').html());
                 initializePagination();
+            },
+            error: function() {
+                alert("Error updating report.");
             }
         });
     }
@@ -24,6 +27,9 @@ $(document).ready(function() {
                     $('#course').append('<option value="' + course.id + '">' + course.fullname + '</option>');
                 });
                 updateReport();
+            },
+            error: function() {
+                alert("Error loading courses.");
             }
         });
     });
