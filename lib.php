@@ -1,76 +1,80 @@
 <?php
 
+require_once("$CFG->libdir/excellib.class.php");
+require_once("$CFG->libdir/odslib.class.php");
+require_once("$CFG->libdir/csvlib.class.php");
+
 /**
- * Generate worksheet for report export
+ * Export report to .xlsx or .ods format.
  *
- * @param stdClass $data The data for the report
- * @param string $filename The name of the file
- * @param string $format excel|ods
+ * @param stdClass $data The data for the report.
+ * @param string $filename The base name of the file without extension.
+ * @param string $format The format of the export: 'excel' or 'ods'.
  */
 function attendance_exporttotableed($data, $filename, $format) {
     global $CFG;
 
     if ($format === 'excel') {
-        require_once($CFG->libdir.'/excellib.class.php');
-        $filename .= ".xls";
+        $filename .= ".xlsx";
         $workbook = new MoodleExcelWorkbook("-");
     } else {
-        require_once($CFG->libdir.'/odslib.class.php');
         $filename .= ".ods";
         $workbook = new MoodleODSWorkbook("-");
     }
 
-    // Sending HTTP headers.
+    ob_clean(); // Clean the output buffer to fix the headers already sent error
     $workbook->send($filename);
 
-    // Creating the first worksheet.
-    $myxls = $workbook->add_worksheet('Report');
-    // Format types.
-    $formatbc = $workbook->add_format();
-    $formatbc->set_bold(1);
+    $sheettitle = get_string('report', 'block_reports_custom');
+    $worksheet = $workbook->add_worksheet($sheettitle);
 
-    // Writing headers.
-    foreach ($data->tabhead as $j => $header) {
-        $myxls->write(0, $j, $header, $formatbc);
+    // Define the format for the header
+    $formatbc = $workbook->add_format(array('bold' => 1));
+    $headers = $data->tabhead;
+
+    // Write the headers
+    $col = 0;
+    foreach ($headers as $header) {
+        $worksheet->write(0, $col++, $header, $formatbc);
     }
 
-    // Writing data.
-    foreach ($data->table as $i => $row) {
-        foreach ($row as $j => $cell) {
-            $myxls->write($i + 1, $j, $cell);
+    // Write the data
+    $row = 1;
+    foreach ($data->table as $record) {
+        $col = 0;
+        foreach ($record as $value) {
+            $worksheet->write($row, $col++, $value);
         }
+        $row++;
     }
+
     $workbook->close();
+    exit;
 }
 
 /**
- * Generate csv for report export
+ * Export report to .txt format.
  *
- * @param stdClass $data The data for the report
- * @param string $filename The name of the file
+ * @param stdClass $data The data for the report.
+ * @param string $filename The base name of the file.
  */
 function attendance_exporttocsv($data, $filename) {
-    $filename .= ".csv";
+    $filename .= ".txt";
 
-    header("Content-Type: text/csv; charset=utf-8");
+    // Prevent the error "headers already sent"
+    ob_clean();
+    header("Content-Type: text/plain");
     header("Content-Disposition: attachment; filename=\"$filename\"");
-    header("Expires: 0");
-    header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
-    header("Pragma: public");
 
-    $output = fopen('php://output', 'w');
-    if ($output === false) {
-        debugging("Failed to open output stream", DEBUG_DEVELOPER);
-        return;
+    $headers = $data->tabhead;
+
+    echo implode("\t", $headers) . "\n";
+
+    foreach ($data->table as $record) {
+        echo implode("\t", $record) . "\n";
     }
 
-    // Output headers.
-    fputcsv($output, $data->tabhead);
-
-    // Output data.
-    foreach ($data->table as $row) {
-        fputcsv($output, $row);
-    }
-
-    fclose($output);
+    exit;
 }
+
+?>
