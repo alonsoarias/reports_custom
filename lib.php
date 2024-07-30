@@ -45,6 +45,7 @@ function attendance_exporttotableed($data, $filename, $format)
     $workbook->close();
 }
 
+
 /**
  * Generate csv for report export
  *
