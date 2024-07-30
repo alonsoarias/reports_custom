@@ -14,15 +14,26 @@ require_once("$CFG->libdir/csvlib.class.php");
 function attendance_exporttotableed($data, $filename, $format) {
     global $CFG;
 
+    debugging("Starting attendance_exporttotableed function", DEBUG_DEVELOPER);
+
+    // Clean the output buffer to fix the headers already sent error
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
     if ($format === 'excel') {
+        debugging("Loading Excel library", DEBUG_DEVELOPER);
+        require_once($CFG->libdir.'/excellib.class.php');
         $filename .= ".xlsx";
         $workbook = new MoodleExcelWorkbook("-");
     } else {
+        debugging("Loading ODS library", DEBUG_DEVELOPER);
+        require_once($CFG->libdir.'/odslib.class.php');
         $filename .= ".ods";
         $workbook = new MoodleODSWorkbook("-");
     }
 
-    ob_clean(); // Clean the output buffer to fix the headers already sent error
+    debugging("Sending workbook headers for $filename", DEBUG_DEVELOPER);
     $workbook->send($filename);
 
     $sheettitle = get_string('report', 'block_reports_custom');
@@ -33,12 +44,14 @@ function attendance_exporttotableed($data, $filename, $format) {
     $headers = $data->tabhead;
 
     // Write the headers
+    debugging("Writing headers", DEBUG_DEVELOPER);
     $col = 0;
     foreach ($headers as $header) {
         $worksheet->write(0, $col++, $header, $formatbc);
     }
 
     // Write the data
+    debugging("Writing data", DEBUG_DEVELOPER);
     $row = 1;
     foreach ($data->table as $record) {
         $col = 0;
@@ -48,8 +61,9 @@ function attendance_exporttotableed($data, $filename, $format) {
         $row++;
     }
 
+    debugging("Closing workbook", DEBUG_DEVELOPER);
     $workbook->close();
-    exit;
+    debugging("Workbook closed successfully", DEBUG_DEVELOPER);
 }
 
 /**
@@ -59,22 +73,38 @@ function attendance_exporttotableed($data, $filename, $format) {
  * @param string $filename The base name of the file.
  */
 function attendance_exporttocsv($data, $filename) {
-    $filename .= ".txt";
+    debugging("Starting attendance_exporttocsv function", DEBUG_DEVELOPER);
+
+    $filename .= ".csv";
 
     // Prevent the error "headers already sent"
-    ob_clean();
-    header("Content-Type: text/plain");
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    header("Content-Type: text/csv; charset=utf-8");
     header("Content-Disposition: attachment; filename=\"$filename\"");
+    header("Expires: 0");
+    header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+    header("Pragma: public");
 
-    $headers = $data->tabhead;
-
-    echo implode("\t", $headers) . "\n";
-
-    foreach ($data->table as $record) {
-        echo implode("\t", $record) . "\n";
+    $output = fopen('php://output', 'w');
+    if ($output === false) {
+        debugging("Failed to open output stream", DEBUG_DEVELOPER);
+        return;
     }
 
-    exit;
+    // Output headers
+    debugging("Writing CSV headers", DEBUG_DEVELOPER);
+    fputcsv($output, $data->tabhead);
+
+    // Output data
+    debugging("Writing CSV data", DEBUG_DEVELOPER);
+    foreach ($data->table as $record) {
+        fputcsv($output, $record);
+    }
+
+    fclose($output);
+    debugging("CSV file generated successfully", DEBUG_DEVELOPER);
 }
 
 ?>
