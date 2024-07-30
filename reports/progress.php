@@ -11,6 +11,8 @@ $firstname = optional_param('firstname', '', PARAM_TEXT);
 $lastname = optional_param('lastname', '', PARAM_TEXT);
 $format = optional_param('format', 'excel', PARAM_TEXT); // Nuevo parámetro para el formato de descarga
 
+debugging("Starting progress.php script", DEBUG_DEVELOPER);
+
 $params = [];
 $sql = "SELECT
             gg.id AS uniqueid,
@@ -64,7 +66,12 @@ if ($lastname) {
     $params['lastname'] = "$lastname%";
 }
 
+debugging("SQL Query: $sql", DEBUG_DEVELOPER);
+debugging("Params: " . json_encode($params), DEBUG_DEVELOPER);
+
 $records = $DB->get_records_sql($sql, $params);
+
+debugging("Number of records fetched: " . count($records), DEBUG_DEVELOPER);
 
 // Datos del reporte
 $data = new stdClass();
@@ -88,6 +95,7 @@ foreach ($records as $record) {
 }
 
 if (optional_param('download', '', PARAM_TEXT)) {
+    debugging("Download request detected, format: $format", DEBUG_DEVELOPER);
     if ($format === 'csv') {
         attendance_exporttocsv($data, 'progress_report');
     } else {
