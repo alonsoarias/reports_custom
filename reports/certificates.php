@@ -10,6 +10,7 @@ $PAGE->set_title('Certificates Report');
 $PAGE->set_heading('Certificates Report');
 $PAGE->requires->jquery();
 $PAGE->requires->js(new moodle_url('/blocks/reports_custom/reports/certificates.js'));
+$PAGE->requires->css(new moodle_url('/blocks/reports_custom/reports/styles.css')); // Para incluir estilos adicionales si es necesario
 
 $perpage = 100; 
 $page = optional_param('page', 0, PARAM_INT); 
@@ -18,13 +19,15 @@ $category = optional_param('category', '', PARAM_INT);
 $course = optional_param('course', '', PARAM_INT);
 $firstname = optional_param('firstname', '', PARAM_TEXT);
 $lastname = optional_param('lastname', '', PARAM_TEXT);
+$format = optional_param('format', 'excel', PARAM_TEXT); // Nuevo parámetro para el formato de descarga
 
 echo $OUTPUT->header();
 
 echo '<form id="filtersForm" method="GET" class="form-inline mb-3">';
-echo '<div class="form-group mr-2">';
+echo '<div class="form-row align-items-center">';
+echo '<div class="col-auto">';
 echo '<label for="category" class="mr-2">Category:</label>';
-echo '<select id="category" name="category" class="form-control">';
+echo '<select id="category" name="category" class="form-control mb-2">';
 echo '<option value="">All</option>';
 $categories = $DB->get_records('course_categories');
 foreach ($categories as $categoryObj) {
@@ -34,9 +37,9 @@ foreach ($categories as $categoryObj) {
 echo '</select>';
 echo '</div>';
 
-echo '<div class="form-group mr-2">';
+echo '<div class="col-auto">';
 echo '<label for="course" class="mr-2">Course:</label>';
-echo '<select id="course" name="course" class="form-control">';
+echo '<select id="course" name="course" class="form-control mb-2">';
 echo '<option value="">All</option>';
 if ($category) {
     $courses = $DB->get_records('course', array('category' => $category), 'fullname ASC', 'id, fullname');
@@ -47,26 +50,33 @@ if ($category) {
 }
 echo '</select>';
 echo '</div>';
+echo '</div>'; // Cierra form-row
 
-echo '<div class="form-group mr-2">';
+echo '<div class="form-row align-items-center">';
+echo '<div class="col-auto">';
 echo '<label for="firstname" class="mr-2">Nombre:</label>';
-echo '<div class="alphabet-filter" data-filter="firstname">';
-echo '<a href="#" data-letter="">Todos</a>';
+echo '<div class="alphabet-filter d-flex mb-2" data-filter="firstname">';
+echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1" data-letter="">Todos</a>';
 foreach (range('A', 'Z') as $letter) {
-    echo '<a href="#" data-letter="'.$letter.'">'.$letter.'</a>';
+    $active = $firstname == $letter ? 'active' : '';
+    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 '.$active.'" data-letter="'.$letter.'">'.$letter.'</a>';
 }
 echo '</div>';
+echo '<input type="hidden" name="firstname" value="'.$firstname.'">';
 echo '</div>';
 
-echo '<div class="form-group mr-2">';
+echo '<div class="col-auto">';
 echo '<label for="lastname" class="mr-2">Apellido(s):</label>';
-echo '<div class="alphabet-filter" data-filter="lastname">';
-echo '<a href="#" data-letter="">Todos</a>';
+echo '<div class="alphabet-filter d-flex mb-2" data-filter="lastname">';
+echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1" data-letter="">Todos</a>';
 foreach (range('A', 'Z') as $letter) {
-    echo '<a href="#" data-letter="'.$letter.'">'.$letter.'</a>';
+    $active = $lastname == $letter ? 'active' : '';
+    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 '.$active.'" data-letter="'.$letter.'">'.$letter.'</a>';
 }
 echo '</div>';
+echo '<input type="hidden" name="lastname" value="'.$lastname.'">';
 echo '</div>';
+echo '</div>'; // Cierra form-row
 
 echo '</form>';
 
@@ -116,33 +126,31 @@ if ($lastname) {
 $totalcount = $DB->count_records_sql("SELECT COUNT(*) FROM ($sql) AS total", $params);
 $records = $DB->get_records_sql($sql, $params, $page * $perpage, $perpage);
 
-if (optional_param('downloadxls', '', PARAM_TEXT)) {
-    require_once($CFG->libdir . '/excellib.class.php');
-    $filename = 'certificates_report_' . date('Ymd_His') . '.xls';
-    $workbook = new MoodleExcelWorkbook("-");
-    $workbook->send($filename);
-    $worksheet = $workbook->add_worksheet('Certificates Report');
+// Datos del reporte
+$data = new stdClass();
+$data->course = ''; // Establecer curso actual
+$data->group = ''; // Establecer grupo actual
+$data->tabhead = ['Cedula', 'Nombres', 'Apellidos', 'Clinica', 'Area', 'NombreCurso', 'Fecha', 'CategoriaCurso'];
+$data->table = [];
+foreach ($records as $record) {
+    $data->table[] = [
+        $record->cedula,
+        $record->nombres,
+        $record->apellidos,
+        $record->clinica,
+        $record->area,
+        $record->nombrecurso,
+        $record->fecha,
+        $record->categoriacurso
+    ];
+}
 
-    $headers = ['Cedula', 'Nombres', 'Apellidos', 'Clinica', 'Area', 'NombreCurso', 'Fecha', 'CategoriaCurso'];
-    $col = 0;
-    foreach ($headers as $header) {
-        $worksheet->write(0, $col++, $header);
+if (optional_param('download', '', PARAM_TEXT)) {
+    if ($format === 'csv') {
+        attendance_exporttocsv($data, 'certificates_report');
+    } else {
+        attendance_exporttotableed($data, 'certificates_report', $format);
     }
-
-    $row = 1;
-    foreach ($records as $record) {
-        $worksheet->write($row, 0, $record->cedula);
-        $worksheet->write($row, 1, $record->nombres);
-        $worksheet->write($row, 2, $record->apellidos);
-        $worksheet->write($row, 3, $record->clinica);
-        $worksheet->write($row, 4, $record->area);
-        $worksheet->write($row, 5, $record->nombrecurso);
-        $worksheet->write($row, 6, $record->fecha);
-        $worksheet->write($row, 7, $record->categoriacurso);
-        $row++;
-    }
-
-    $workbook->close();
     exit;
 }
 
@@ -172,6 +180,19 @@ foreach ($records as $record) {
 }
 
 echo html_writer::table($table);
+
+// ComboBox para seleccionar el formato de descarga
+echo '<form id="downloadForm" method="GET">';
+echo '<div class="form-group">';
+echo '<label for="format" class="mr-2">Formato de descarga:</label>';
+echo '<select id="format" name="format" class="form-control d-inline w-auto">';
+echo '<option value="excel" ' . ($format === 'excel' ? 'selected' : '') . '>Excel</option>';
+echo '<option value="ods" ' . ($format === 'ods' ? 'selected' : '') . '>ODS</option>';
+echo '<option value="csv" ' . ($format === 'csv' ? 'selected' : '') . '>CSV</option>';
+echo '</select>';
+echo '<button type="submit" name="download" value="1" class="btn btn-primary ml-2">Descargar</button>';
+echo '</div>';
+echo '</form>';
 
 $baseurl = new moodle_url('/blocks/reports_custom/reports/certificates.php', [
     'category' => $category,
