@@ -1,7 +1,10 @@
 <?php
 require_once('../../../config.php');
-require_once('../lib.php');  // Asegúrate de incluir el archivo con las funciones de exportación.
+require_once('../lib.php');
 require_login();
+@ini_set('memory_limit', '512M');
+@set_time_limit(300);
+
 $context = context_system::instance();
 require_capability('moodle/site:config', $context);
 
@@ -9,9 +12,7 @@ $category = optional_param('category', '', PARAM_INT);
 $course = optional_param('course', '', PARAM_INT);
 $firstname = optional_param('firstname', '', PARAM_TEXT);
 $lastname = optional_param('lastname', '', PARAM_TEXT);
-$format = optional_param('format', 'excel', PARAM_TEXT); // Nuevo parámetro para el formato de descarga
-
-debugging("Starting certificates.php script", DEBUG_DEVELOPER);
+$format = optional_param('format', 'excel', PARAM_TEXT);
 
 $params = [];
 $sql = "SELECT
@@ -54,14 +55,8 @@ if ($lastname) {
     $params['lastname'] = "$lastname%";
 }
 
-debugging("SQL Query: $sql", DEBUG_DEVELOPER);
-debugging("Params: " . json_encode($params), DEBUG_DEVELOPER);
-
 $records = $DB->get_records_sql($sql, $params);
 
-debugging("Number of records fetched: " . count($records), DEBUG_DEVELOPER);
-
-// Datos del reporte
 $data = new stdClass();
 $data->tabhead = ['Cedula', 'Nombres', 'Apellidos', 'Clinica', 'Area', 'NombreCurso', 'Fecha', 'CategoriaCurso'];
 $data->table = [];
@@ -79,7 +74,6 @@ foreach ($records as $record) {
 }
 
 if (optional_param('download', '', PARAM_TEXT)) {
-    debugging("Download request detected, format: $format", DEBUG_DEVELOPER);
     if ($format === 'csv') {
         attendance_exporttocsv($data, 'certificates_report');
     } else {
@@ -94,7 +88,7 @@ $PAGE->set_title('Certificates Report');
 $PAGE->set_heading('Certificates Report');
 $PAGE->requires->jquery();
 $PAGE->requires->js(new moodle_url('/blocks/reports_custom/reports/certificates.js'));
-$PAGE->requires->css(new moodle_url('/blocks/reports_custom/reports/styles.css')); // Para incluir estilos adicionales si es necesario
+$PAGE->requires->css(new moodle_url('/blocks/reports_custom/reports/styles.css'));
 
 $perpage = 100; 
 $page = optional_param('page', 0, PARAM_INT); 
@@ -128,7 +122,7 @@ if ($category) {
 }
 echo '</select>';
 echo '</div>';
-echo '</div>'; // Cierra form-row
+echo '</div>';
 
 echo '<div class="form-row align-items-center">';
 echo '<div class="col-auto">';
@@ -154,7 +148,7 @@ foreach (range('A', 'Z') as $letter) {
 echo '</div>';
 echo '<input type="hidden" name="lastname" value="'.$lastname.'">';
 echo '</div>';
-echo '</div>'; // Cierra form-row
+echo '</div>';
 
 echo '</form>';
 
@@ -190,7 +184,6 @@ foreach ($records as $record) {
 
 echo html_writer::table($table);
 
-// ComboBox para seleccionar el formato de descarga
 echo '<form id="downloadForm" method="GET">';
 echo '<div class="form-group">';
 echo '<label for="format" class="mr-2">Formato de descarga:</label>';
