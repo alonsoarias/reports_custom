@@ -1,8 +1,100 @@
 <?php
 require_once('../../../config.php');
+require_once('../lib.php');  // Asegúrate de incluir el archivo con las funciones de exportación.
 require_login();
 $context = context_system::instance();
 require_capability('moodle/site:config', $context);
+
+$category = optional_param('category', '', PARAM_INT);
+$course = optional_param('course', '', PARAM_INT);
+$firstname = optional_param('firstname', '', PARAM_TEXT);
+$lastname = optional_param('lastname', '', PARAM_TEXT);
+$format = optional_param('format', 'excel', PARAM_TEXT); // Nuevo parámetro para el formato de descarga
+
+$params = [];
+$sql = "SELECT
+            gg.id AS uniqueid,
+            u.idnumber AS cedula,
+            u.username AS usuario,
+            u.firstname AS nombre, 
+            u.lastname AS apellido, 
+            CONCAT(u.firstname,' ',u.lastname) AS nombre_completo, 
+            u.institution AS clinica,
+            u.department AS area,
+            cc.name AS categoria,
+            c.shortname AS curso,
+            CASE 
+                WHEN gi.itemtype = 'course' 
+                THEN c.fullname
+                ELSE gi.itemname
+            END AS item,
+            ROUND(gg.finalgrade, 2) AS calificacion,
+            FROM_UNIXTIME(gg.timemodified) AS fecha
+        FROM 
+            {course} AS c
+        JOIN 
+            {context} AS ctx ON c.id = ctx.instanceid
+        JOIN 
+            {role_assignments} AS ra ON ra.contextid = ctx.id
+        JOIN 
+            {user} AS u ON u.id = ra.userid
+        JOIN 
+            {grade_grades} AS gg ON gg.userid = u.id
+        JOIN 
+            {grade_items} AS gi ON gi.id = gg.itemid
+        JOIN 
+            {course_categories} AS cc ON cc.id = c.category
+        WHERE 
+            gi.courseid = c.id";
+
+if ($category) {
+    $sql .= " AND cc.id = :category";
+    $params['category'] = $category;
+}
+if ($course) {
+    $sql .= " AND c.id = :course";
+    $params['course'] = $course;
+}
+if ($firstname) {
+    $sql .= " AND u.firstname LIKE :firstname";
+    $params['firstname'] = "$firstname%";
+}
+if ($lastname) {
+    $sql .= " AND u.lastname LIKE :lastname";
+    $params['lastname'] = "$lastname%";
+}
+
+$records = $DB->get_records_sql($sql, $params);
+
+// Datos del reporte
+$data = new stdClass();
+$data->tabhead = ['Cedula', 'Usuario', 'Nombre', 'Apellido', 'Nombre Completo', 'Clinica', 'Area', 'Categoria', 'Curso', 'Item', 'Calificacion', 'Fecha'];
+$data->table = [];
+foreach ($records as $record) {
+    $data->table[] = [
+        $record->cedula,
+        $record->usuario,
+        $record->nombre,
+        $record->apellido,
+        $record->nombre_completo,
+        $record->clinica,
+        $record->area,
+        $record->categoria,
+        $record->curso,
+        $record->item,
+        $record->calificacion,
+        $record->fecha
+    ];
+}
+
+if (optional_param('download', '', PARAM_TEXT)) {
+    if ($format === 'csv') {
+        attendance_exporttocsv($data, 'progress_report');
+    } else {
+        attendance_exporttotableed($data, 'progress_report', $format);
+    }
+    exit;
+}
 
 $PAGE->set_url(new moodle_url('/blocks/reports_custom/reports/progress.php'));
 $PAGE->set_context($context);
@@ -14,12 +106,6 @@ $PAGE->requires->css(new moodle_url('/blocks/reports_custom/reports/styles.css')
 
 $perpage = 100; 
 $page = optional_param('page', 0, PARAM_INT); 
-
-$category = optional_param('category', '', PARAM_INT);
-$course = optional_param('course', '', PARAM_INT);
-$firstname = optional_param('firstname', '', PARAM_TEXT);
-$lastname = optional_param('lastname', '', PARAM_TEXT);
-$format = optional_param('format', 'excel', PARAM_TEXT); // Nuevo parámetro para el formato de descarga
 
 echo $OUTPUT->header();
 
@@ -82,93 +168,8 @@ echo '</form>';
 
 echo '<div id="reportData">';
 
-$params = [];
-$sql = "SELECT
-            gg.id AS uniqueid,
-            u.idnumber AS cedula,
-            u.username AS usuario,
-            u.firstname AS nombre, 
-            u.lastname AS apellido, 
-            CONCAT(u.firstname,' ',u.lastname) AS nombre_completo, 
-            u.institution AS clinica,
-            u.department AS area,
-            cc.name AS categoria,
-            c.shortname AS curso,
-            CASE 
-                WHEN gi.itemtype = 'course' 
-                THEN c.fullname
-                ELSE gi.itemname
-            END AS item,
-            ROUND(gg.finalgrade, 2) AS calificacion,
-            FROM_UNIXTIME(gg.timemodified) AS fecha
-        FROM 
-            {course} AS c
-        JOIN 
-            {context} AS ctx ON c.id = ctx.instanceid
-        JOIN 
-            {role_assignments} AS ra ON ra.contextid = ctx.id
-        JOIN 
-            {user} AS u ON u.id = ra.userid
-        JOIN 
-            {grade_grades} AS gg ON gg.userid = u.id
-        JOIN 
-            {grade_items} AS gi ON gi.id = gg.itemid
-        JOIN 
-            {course_categories} AS cc ON cc.id = c.category
-        WHERE 
-            gi.courseid = c.id";
-
-if ($category) {
-    $sql .= " AND cc.id = :category";
-    $params['category'] = $category;
-}
-if ($course) {
-    $sql .= " AND c.id = :course";
-    $params['course'] = $course;
-}
-if ($firstname) {
-    $sql .= " AND u.firstname LIKE :firstname";
-    $params['firstname'] = "$firstname%";
-}
-if ($lastname) {
-    $sql .= " AND u.lastname LIKE :lastname";
-    $params['lastname'] = "$lastname%";
-}
-
-$totalcount = $DB->count_records_sql("SELECT COUNT(*) FROM ($sql) AS total", $params);
-$records = $DB->get_records_sql($sql, $params, $page * $perpage, $perpage);
-
-// Datos del reporte
-$data = new stdClass();
-$data->course = ''; // Establecer curso actual
-$data->group = ''; // Establecer grupo actual
-$data->tabhead = ['Cedula', 'Usuario', 'Nombre', 'Apellido', 'Nombre Completo', 'Clinica', 'Area', 'Categoria', 'Curso', 'Item', 'Calificacion', 'Fecha'];
-$data->table = [];
-foreach ($records as $record) {
-    $data->table[] = [
-        $record->cedula,
-        $record->usuario,
-        $record->nombre,
-        $record->apellido,
-        $record->nombre_completo,
-        $record->clinica,
-        $record->area,
-        $record->categoria,
-        $record->curso,
-        $record->item,
-        $record->calificacion,
-        $record->fecha
-    ];
-}
-
-if (optional_param('download', '', PARAM_TEXT)) {
-    if ($format === 'csv') {
-        attendance_exporttocsv($data, 'progress_report');
-    } else {
-        attendance_exporttotableed($data, 'progress_report', $format);
-    }
-    exit;
-}
+$totalcount = count($records);
+$records = array_slice($records, $page * $perpage, $perpage);
 
 $table = new html_table();
 $table->head = [
