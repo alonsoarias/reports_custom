@@ -7,10 +7,20 @@ $(document).ready(function() {
             success: function(data) {
                 $('#reportData').html($(data).find('#reportData').html());
                 initializePagination();
+                updateActiveFilters();
             },
             error: function() {
                 alert("Error updating report.");
             }
+        });
+    }
+
+    function updateActiveFilters() {
+        $('.alphabet-filter a').removeClass('active');
+        $('.alphabet-filter').each(function() {
+            var filter = $(this).data('filter');
+            var value = $('input[name="' + filter + '"]').val();
+            $(this).find('a[data-letter="' + value + '"]').addClass('active');
         });
     }
 
@@ -56,4 +66,5 @@ $(document).ready(function() {
     }
 
     initializePagination();
+    updateActiveFilters();
 });
