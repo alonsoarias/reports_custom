@@ -11,11 +11,9 @@ $PAGE->set_heading('Certificates Report');
 $PAGE->requires->jquery();
 $PAGE->requires->js(new moodle_url('/blocks/reports_custom/reports/certificates.js'));
 
-// Parámetros para paginación
-$perpage = 100; // Número de filas por página
-$page = optional_param('page', 0, PARAM_INT); // Página actual
+$perpage = 100; 
+$page = optional_param('page', 0, PARAM_INT); 
 
-// Obtener parámetros de filtros
 $category = optional_param('category', '', PARAM_INT);
 $course = optional_param('course', '', PARAM_INT);
 $firstname = optional_param('firstname', '', PARAM_TEXT);
@@ -23,7 +21,6 @@ $lastname = optional_param('lastname', '', PARAM_TEXT);
 
 echo $OUTPUT->header();
 
-// Formulario de filtros
 echo '<form id="filtersForm" method="GET" class="form-inline mb-3">';
 echo '<div class="form-group mr-2">';
 echo '<label for="category" class="mr-2">Category:</label>';
@@ -51,7 +48,6 @@ if ($category) {
 echo '</select>';
 echo '</div>';
 
-// Filtros de nombre y apellido usando la estructura de menú alfabético
 echo '<div class="form-group mr-2">';
 echo '<label for="firstname" class="mr-2">Nombre:</label>';
 echo '<div class="alphabet-filter" data-filter="firstname">';
@@ -76,7 +72,6 @@ echo '</form>';
 
 echo '<div id="reportData">';
 
-// Consulta SQL
 $params = [];
 $sql = "SELECT
             CerGene.id AS uniqueid,
@@ -118,28 +113,22 @@ if ($lastname) {
     $params['lastname'] = "$lastname%";
 }
 
-// Obtener total de registros
 $totalcount = $DB->count_records_sql("SELECT COUNT(*) FROM ($sql) AS total", $params);
-
-// Obtener registros con limitación y desplazamiento
 $records = $DB->get_records_sql($sql, $params, $page * $perpage, $perpage);
 
 if (optional_param('downloadxls', '', PARAM_TEXT)) {
-    // Generar el archivo XLS
     require_once($CFG->libdir . '/excellib.class.php');
     $filename = 'certificates_report_' . date('Ymd_His') . '.xls';
     $workbook = new MoodleExcelWorkbook("-");
     $workbook->send($filename);
     $worksheet = $workbook->add_worksheet('Certificates Report');
 
-    // Encabezados
     $headers = ['Cedula', 'Nombres', 'Apellidos', 'Clinica', 'Area', 'NombreCurso', 'Fecha', 'CategoriaCurso'];
     $col = 0;
     foreach ($headers as $header) {
         $worksheet->write(0, $col++, $header);
     }
 
-    // Datos
     $row = 1;
     foreach ($records as $record) {
         $worksheet->write($row, 0, $record->cedula);
@@ -157,7 +146,6 @@ if (optional_param('downloadxls', '', PARAM_TEXT)) {
     exit;
 }
 
-// Generar tabla
 $table = new html_table();
 $table->head = [
     'Cedula',
@@ -185,7 +173,6 @@ foreach ($records as $record) {
 
 echo html_writer::table($table);
 
-// Paginación
 $baseurl = new moodle_url('/blocks/reports_custom/reports/certificates.php', [
     'category' => $category,
     'course' => $course,
