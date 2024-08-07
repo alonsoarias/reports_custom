@@ -2,8 +2,8 @@
 require_once('../../../config.php');
 require_once('../lib.php');
 require_login();
-@ini_set('memory_limit', '512M');
-@set_time_limit(300);
+@ini_set('memory_limit', '2048M');
+@set_time_limit(600);
 
 $context = context_system::instance();
 require_capability('moodle/site:config', $context);
@@ -12,6 +12,7 @@ $category = optional_param('category', '', PARAM_INT);
 $course = optional_param('course', '', PARAM_INT);
 $firstname = optional_param('firstname', '', PARAM_TEXT);
 $lastname = optional_param('lastname', '', PARAM_TEXT);
+$usertype = optional_param('usertype', '', PARAM_TEXT); // New parameter for user type
 $format = optional_param('format', 'excel', PARAM_TEXT);
 
 $params = [];
@@ -32,7 +33,8 @@ $sql = "SELECT
                 ELSE gi.itemname
             END AS item,
             ROUND(gg.finalgrade, 2) AS calificacion,
-            FROM_UNIXTIME(gg.timemodified) AS fecha
+            FROM_UNIXTIME(gg.timemodified) AS fecha,
+            COALESCE(d1.data, 'No asignado') AS user_type
         FROM 
             {course} AS c
         JOIN 
@@ -47,6 +49,10 @@ $sql = "SELECT
             {grade_items} AS gi ON gi.id = gg.itemid
         JOIN 
             {course_categories} AS cc ON cc.id = c.category
+        JOIN
+            {user_info_data} d1 ON d1.userid = u.id
+        JOIN
+            {user_info_field} f1 ON d1.fieldid = f1.id AND f1.shortname = 'user_type'
         WHERE 
             gi.courseid = c.id";
 
@@ -66,11 +72,15 @@ if ($lastname) {
     $sql .= " AND u.lastname LIKE :lastname";
     $params['lastname'] = "$lastname%";
 }
+if ($usertype) {
+    $sql .= " AND d1.data = :usertype";
+    $params['usertype'] = $usertype;
+}
 
 $records = $DB->get_records_sql($sql, $params);
 
 $data = new stdClass();
-$data->tabhead = ['Cedula', 'Usuario', 'Nombre', 'Apellido', 'Nombre Completo', 'Clinica', 'Area', 'Categoria', 'Curso', 'Item', 'Calificacion', 'Fecha'];
+$data->tabhead = ['Cedula', 'Usuario', 'Nombre', 'Apellido', 'Nombre Completo', 'Clinica', 'Area', 'Categoria', 'Curso', 'Item', 'Calificacion', 'Fecha', 'User Type'];
 $data->table = [];
 foreach ($records as $record) {
     $data->table[] = [
@@ -85,7 +95,8 @@ foreach ($records as $record) {
         $record->curso,
         $record->item,
         $record->calificacion,
-        $record->fecha
+        $record->fecha,
+        $record->user_type
     ];
 }
 
@@ -111,8 +122,8 @@ $PAGE->requires->jquery();
 $PAGE->requires->js(new moodle_url('/blocks/reports_custom/reports/progress.js'));
 $PAGE->requires->css(new moodle_url('/blocks/reports_custom/reports/styles.css'));
 
-$perpage = 100; 
-$page = optional_param('page', 0, PARAM_INT); 
+$perpage = 100;
+$page = optional_param('page', 0, PARAM_INT);
 
 echo $OUTPUT->header();
 
@@ -125,7 +136,7 @@ echo '<option value="">All</option>';
 $categories = $DB->get_records('course_categories');
 foreach ($categories as $categoryObj) {
     $selected = $category == $categoryObj->id ? 'selected' : '';
-    echo '<option value="'.$categoryObj->id.'" '.$selected.'>'.$categoryObj->name.'</option>';
+    echo '<option value="' . $categoryObj->id . '" ' . $selected . '>' . $categoryObj->name . '</option>';
 }
 echo '</select>';
 echo '</div>';
@@ -138,12 +149,26 @@ if ($category) {
     $courses = $DB->get_records('course', array('category' => $category), 'fullname ASC', 'id, fullname');
     foreach ($courses as $courseObj) {
         $selected = $course == $courseObj->id ? 'selected' : '';
-        echo '<option value="'.$courseObj->id.'" '.$selected.'>'.$courseObj->fullname.'</option>';
+        echo '<option value="' . $courseObj->id . '" ' . $selected . '>' . $courseObj->fullname . '</option>';
     }
 }
 echo '</select>';
 echo '</div>';
 echo '</div>';
+
+echo '<div class="col-auto">';
+echo '<label for="usertype" class="mr-2">User Type:</label>';
+echo '<select id="usertype" name="usertype" class="form-control mb-2">';
+echo '<option value="">All</option>';
+$userTypes = $DB->get_records_sql("SELECT DISTINCT d1.data AS usertype FROM {user_info_data} d1 JOIN {user_info_field} f1 ON d1.fieldid = f1.id WHERE f1.shortname = 'user_type'");
+foreach ($userTypes as $type) {
+    $selected = $usertype == $type->usertype ? 'selected' : '';
+    echo '<option value="'.$type->usertype.'" '.$selected.'>'.$type->usertype.'</option>';
+}
+echo '</select>';
+echo '</div>';
+echo '</div>';
+
 
 echo '<div class="form-row align-items-center">';
 echo '<div class="col-auto">';
@@ -152,10 +177,10 @@ echo '<div class="alphabet-filter d-flex mb-2" data-filter="firstname">';
 echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1" data-letter="">Todos</a>';
 foreach (range('A', 'Z') as $letter) {
     $active = $firstname == $letter ? 'active' : '';
-    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 '.$active.'" data-letter="'.$letter.'">'.$letter.'</a>';
+    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 ' . $active . '" data-letter="' . $letter . '">' . $letter . '</a>';
 }
 echo '</div>';
-echo '<input type="hidden" name="firstname" value="'.$firstname.'">';
+echo '<input type="hidden" name="firstname" value="' . $firstname . '">';
 echo '</div>';
 
 echo '<div class="col-auto">';
@@ -164,10 +189,10 @@ echo '<div class="alphabet-filter d-flex mb-2" data-filter="lastname">';
 echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1" data-letter="">Todos</a>';
 foreach (range('A', 'Z') as $letter) {
     $active = $lastname == $letter ? 'active' : '';
-    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 '.$active.'" data-letter="'.$letter.'">'.$letter.'</a>';
+    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 ' . $active . '" data-letter="' . $letter . '">' . $letter . '</a>';
 }
 echo '</div>';
-echo '<input type="hidden" name="lastname" value="'.$lastname.'">';
+echo '<input type="hidden" name="lastname" value="' . $lastname . '">';
 echo '</div>';
 echo '</div>';
 
@@ -191,7 +216,8 @@ $table->head = [
     'Curso',
     'Item',
     'Calificacion',
-    'Fecha'
+    'Fecha',
+    'User Type'
 ];
 
 foreach ($records as $record) {
@@ -207,7 +233,8 @@ foreach ($records as $record) {
         $record->curso,
         $record->item,
         $record->calificacion,
-        $record->fecha
+        $record->fecha,
+        $record->user_type
     ];
 }
 
@@ -235,4 +262,3 @@ echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
 
 echo '</div>';
 echo $OUTPUT->footer();
-?>
