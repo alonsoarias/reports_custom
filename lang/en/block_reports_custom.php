@@ -11,6 +11,7 @@ $string['progress_report'] = 'Courses - User Progress Detail - Grade and Date';
 // Capabilities
 $string['reports_custom:addinstance'] = 'Add a new Reports Custom block';
 $string['reports_custom:myaddinstance'] = 'Add a new Reports Custom block to the My Moodle page';
+$string['reports_custom:view'] = 'View custom reports';
 
 // Table Headers
 $string['header_cedula'] = 'ID';
