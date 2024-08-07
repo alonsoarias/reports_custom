@@ -1,4 +1,5 @@
 $(document).ready(function() {
+    // Función para actualizar el reporte
     function updateReport() {
         $.ajax({
             url: window.location.href,
@@ -7,7 +8,6 @@ $(document).ready(function() {
             success: function(data) {
                 $('#reportData').html($(data).find('#reportData').html());
                 initializePagination();
-                updateActiveFilters();
             },
             error: function() {
                 alert("Error updating report.");
@@ -15,6 +15,7 @@ $(document).ready(function() {
         });
     }
 
+    // Función para actualizar filtros activos en la navegación alfabética
     function updateActiveFilters() {
         $('.alphabet-filter a').removeClass('active');
         $('.alphabet-filter').each(function() {
@@ -24,6 +25,7 @@ $(document).ready(function() {
         });
     }
 
+    // Evento change para el filtro de categoría
     $('#category').change(function() {
         var categoryId = $(this).val();
         $.ajax({
@@ -44,10 +46,12 @@ $(document).ready(function() {
         });
     });
 
-    $('#course, #usertype').change(function() { // Update report when course or user type changes
+    // Evento change para los filtros de curso y tipo de usuario
+    $('#course, #usertype').change(function() {
         updateReport();
     });
 
+    // Evento click para los filtros alfabéticos
     $(document).on('click', '.alphabet-filter a', function(e) {
         e.preventDefault();
         var letter = $(this).data('letter');
@@ -56,6 +60,7 @@ $(document).ready(function() {
         updateReport();
     });
 
+    // Función para inicializar la paginación
     function initializePagination() {
         $('.paging_bar a').on('click', function(e) {
             e.preventDefault();
@@ -65,6 +70,7 @@ $(document).ready(function() {
         });
     }
 
+    // Inicialización de funciones al cargar la página
     initializePagination();
     updateActiveFilters();
 });
