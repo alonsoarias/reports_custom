@@ -12,6 +12,7 @@ $category = optional_param('category', '', PARAM_INT);
 $course = optional_param('course', '', PARAM_INT);
 $firstname = optional_param('firstname', '', PARAM_TEXT);
 $lastname = optional_param('lastname', '', PARAM_TEXT);
+$usertype = optional_param('usertype', '', PARAM_TEXT); // New parameter for user type
 $format = optional_param('format', 'excel', PARAM_TEXT);
 
 $params = [];
@@ -24,17 +25,22 @@ $sql = "SELECT
             usua.department AS area,
             Curso.fullname AS nombrecurso,
             FROM_UNIXTIME(CerGene.timecreated) AS fecha,
-            CatCurso.name AS categoriacurso
+            CatCurso.name AS categoriacurso,
+            COALESCE(d1.data, 'No asignado') AS user_type
         FROM
-            {customcert} AS CusCert
+            {customcert_issues} AS CerGene
+        JOIN
+            {customcert} AS CusCert ON CerGene.customcertid = CusCert.id
         JOIN
             {course} AS Curso ON Curso.id = CusCert.course
         JOIN
-            {customcert_issues} CerGene ON CerGene.customcertid = CusCert.id
+            {user} AS usua ON usua.id = CerGene.userid
         JOIN
-            {user} usua ON usua.id = CerGene.userid
+            {course_categories} AS CatCurso ON Curso.category = CatCurso.id
         JOIN
-            {course_categories} CatCurso ON Curso.category = CatCurso.id
+            {user_info_data} d1 ON d1.userid = usua.id
+        JOIN
+            {user_info_field} f1 ON d1.fieldid = f1.id AND f1.shortname = 'user_type'
         WHERE
             usua.idnumber <> ''";
 
@@ -54,11 +60,15 @@ if ($lastname) {
     $sql .= " AND usua.lastname LIKE :lastname";
     $params['lastname'] = "$lastname%";
 }
+if ($usertype) {
+    $sql .= " AND d1.data = :usertype";
+    $params['usertype'] = $usertype;
+}
 
-$records = $DB->get_records_sql($sql, $params);
+$records = $DB->get_records_sql($sql, $params); //linea 68 
 
 $data = new stdClass();
-$data->tabhead = ['Cedula', 'Nombres', 'Apellidos', 'Clinica', 'Area', 'NombreCurso', 'Fecha', 'CategoriaCurso'];
+$data->tabhead = ['Cedula', 'Nombres', 'Apellidos', 'Clinica', 'Area', 'NombreCurso', 'Fecha', 'CategoriaCurso', 'User Type'];
 $data->table = [];
 foreach ($records as $record) {
     $data->table[] = [
@@ -69,7 +79,8 @@ foreach ($records as $record) {
         $record->area,
         $record->nombrecurso,
         $record->fecha,
-        $record->categoriacurso
+        $record->categoriacurso,
+        $record->user_type
     ];
 }
 
@@ -127,6 +138,18 @@ if ($category) {
 }
 echo '</select>';
 echo '</div>';
+
+echo '<div class="col-auto">';
+echo '<label for="usertype" class="mr-2">User Type:</label>';
+echo '<select id="usertype" name="usertype" class="form-control mb-2">';
+echo '<option value="">All</option>';
+$userTypes = $DB->get_records_sql("SELECT DISTINCT d1.data AS usertype FROM {user_info_data} d1 JOIN {user_info_field} f1 ON d1.fieldid = f1.id WHERE f1.shortname = 'user_type'");
+foreach ($userTypes as $type) {
+    $selected = $usertype == $type->usertype ? 'selected' : '';
+    echo '<option value="'.$type->usertype.'" '.$selected.'>'.$type->usertype.'</option>';
+}
+echo '</select>';
+echo '</div>';
 echo '</div>';
 
 echo '<div class="form-row align-items-center">';
@@ -171,7 +194,8 @@ $table->head = [
     'Area',
     'NombreCurso',
     'Fecha',
-    'CategoriaCurso'
+    'CategoriaCurso',
+    'User Type'
 ];
 
 foreach ($records as $record) {
@@ -183,7 +207,8 @@ foreach ($records as $record) {
         $record->area,
         $record->nombrecurso,
         $record->fecha,
-        $record->categoriacurso
+        $record->categoriacurso,
+        $record->user_type
     ];
 }
 
@@ -205,7 +230,8 @@ $baseurl = new moodle_url('/blocks/reports_custom/reports/certificates.php', [
     'category' => $category,
     'course' => $course,
     'firstname' => $firstname,
-    'lastname' => $lastname
+    'lastname' => $lastname,
+    'usertype' => $usertype // Added to the URL for paging
 ]);
 echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
 
