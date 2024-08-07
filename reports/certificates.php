@@ -8,13 +8,15 @@ require_login();
 $context = context_system::instance();
 require_capability('moodle/site:config', $context);
 
+// Captura de parámetros
 $category = optional_param('category', '', PARAM_INT);
 $course = optional_param('course', '', PARAM_INT);
 $firstname = optional_param('firstname', '', PARAM_TEXT);
 $lastname = optional_param('lastname', '', PARAM_TEXT);
-$usertype = optional_param('usertype', '', PARAM_TEXT); // New parameter for user type
+$usertype = optional_param('usertype', '', PARAM_TEXT);
 $format = optional_param('format', 'excel', PARAM_TEXT);
 
+// Preparando parámetros para la consulta
 $params = [
     'category' => $category,
     'course' => $course,
@@ -23,11 +25,14 @@ $params = [
     'usertype' => $usertype
 ];
 
+// Recuperando registros aplicando filtros
 $records = get_certificates_records($params, $DB);
 
+// Configurando datos para la exportación
 $data = new stdClass();
 $data->tabhead = ['Cedula', 'Nombres', 'Apellidos', 'Clinica', 'Area', 'NombreCurso', 'Fecha', 'CategoriaCurso', 'User Type'];
 $data->table = [];
+
 foreach ($records as $record) {
     $data->table[] = [
         $record->cedula,
@@ -42,11 +47,14 @@ foreach ($records as $record) {
     ];
 }
 
+// Exportación de datos
 if (optional_param('download', '', PARAM_TEXT)) {
-    // Clean the output buffer to fix the headers already sent error
     while (ob_get_level()) {
         ob_end_clean();
     }
+
+    // Verificar datos antes de exportar
+    //print_r($data->table); // Descomenta para depuración
 
     if ($format === 'csv') {
         export_to_csv($data->tabhead, $data->table, 'certificates_report');
@@ -56,6 +64,7 @@ if (optional_param('download', '', PARAM_TEXT)) {
     exit;
 }
 
+// Configuración de la página y carga de recursos necesarios
 $PAGE->set_url(new moodle_url('/blocks/reports_custom/reports/certificates.php'));
 $PAGE->set_context($context);
 $PAGE->set_title('Certificates Report');
@@ -65,10 +74,11 @@ $PAGE->requires->js(new moodle_url('/blocks/reports_custom/reports/certificates.
 $PAGE->requires->css(new moodle_url('/blocks/reports_custom/reports/styles.css'));
 
 $perpage = 100; 
-$page = optional_param('page', 0, PARAM_INT); 
+$page = optional_param('page', 0, PARAM_INT);
 
 echo $OUTPUT->header();
 
+// Renderizado del formulario de filtros
 echo '<form id="filtersForm" method="GET" class="form-inline mb-3">';
 echo '<div class="form-row align-items-center">';
 echo '<div class="col-auto">';
@@ -107,6 +117,7 @@ foreach ($userTypes as $type) {
 }
 echo '</select>';
 echo '</div>';
+
 echo '</div>';
 
 echo '<div class="form-row align-items-center">';
@@ -172,6 +183,11 @@ foreach ($records as $record) {
 echo html_writer::table($table);
 
 echo '<form id="downloadForm" method="GET">';
+echo '<input type="hidden" name="category" value="'.$category.'">';
+echo '<input type="hidden" name="course" value="'.$course.'">';
+echo '<input type="hidden" name="firstname" value="'.$firstname.'">';
+echo '<input type="hidden" name="lastname" value="'.$lastname.'">';
+echo '<input type="hidden" name="usertype" value="'.$usertype.'">';
 echo '<div class="form-group">';
 echo '<label for="format" class="mr-2">Formato de descarga:</label>';
 echo '<select id="format" name="format" class="form-control d-inline w-auto">';
@@ -188,7 +204,7 @@ $baseurl = new moodle_url('/blocks/reports_custom/reports/certificates.php', [
     'course' => $course,
     'firstname' => $firstname,
     'lastname' => $lastname,
-    'usertype' => $usertype // Added to the URL for paging
+    'usertype' => $usertype // Añadido a la URL para paginación
 ]);
 echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
 
