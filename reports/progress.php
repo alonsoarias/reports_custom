@@ -2,11 +2,9 @@
 require_once('../../../config.php');
 require_once('../lib.php');
 require_login();
-@ini_set('memory_limit', '2048M');
-@set_time_limit(600);
 
 $context = context_system::instance();
-require_capability('moodle/site:config', $context);
+require_capability('block/reports_custom:viewreports', $context);
 
 // Captura de parámetros
 $category = optional_param('category', '', PARAM_INT);
