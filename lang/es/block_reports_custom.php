@@ -11,6 +11,7 @@ $string['progress_report'] = 'Cursos - Avance por usuario detallado - Calificaci
 // Capacidades
 $string['reports_custom:addinstance'] = 'Agregar un nuevo bloque de Informes Personalizados';
 $string['reports_custom:myaddinstance'] = 'Agregar un nuevo bloque de Informes Personalizados a la página Mi Moodle';
+$string['reports_custom:view'] = 'Ver informes personalizados';
 
 // Encabezados de Tablas
 $string['header_cedula'] = 'Cédula';
