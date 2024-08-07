@@ -1,5 +1,5 @@
 <?php
-$plugin->version = 2023073003;
+$plugin->version = 2023073006;
 $plugin->requires = 2021051700; // Requires this Moodle version - 3.11.
 $plugin->component = 'block_reports_custom';
 $plugin->maturity = MATURITY_STABLE;
