@@ -44,7 +44,7 @@ $(document).ready(function() {
         });
     });
 
-    $('#course').change(function() {
+    $('#course, #usertype').change(function() { // Update report when course or user type changes
         updateReport();
     });
 
