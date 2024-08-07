@@ -15,57 +15,15 @@ $lastname = optional_param('lastname', '', PARAM_TEXT);
 $usertype = optional_param('usertype', '', PARAM_TEXT); // New parameter for user type
 $format = optional_param('format', 'excel', PARAM_TEXT);
 
-$params = [];
-$sql = "SELECT
-            CerGene.id AS uniqueid,
-            usua.idnumber AS cedula,
-            usua.firstname AS nombres,
-            usua.lastname AS apellidos,
-            usua.institution AS clinica,
-            usua.department AS area,
-            Curso.fullname AS nombrecurso,
-            FROM_UNIXTIME(CerGene.timecreated) AS fecha,
-            CatCurso.name AS categoriacurso,
-            COALESCE(d1.data, 'No asignado') AS user_type
-        FROM
-            {customcert_issues} AS CerGene
-        JOIN
-            {customcert} AS CusCert ON CerGene.customcertid = CusCert.id
-        JOIN
-            {course} AS Curso ON Curso.id = CusCert.course
-        JOIN
-            {user} AS usua ON usua.id = CerGene.userid
-        JOIN
-            {course_categories} AS CatCurso ON Curso.category = CatCurso.id
-        JOIN
-            {user_info_data} d1 ON d1.userid = usua.id
-        JOIN
-            {user_info_field} f1 ON d1.fieldid = f1.id AND f1.shortname = 'user_type'
-        WHERE
-            usua.idnumber <> ''";
+$params = [
+    'category' => $category,
+    'course' => $course,
+    'firstname' => $firstname,
+    'lastname' => $lastname,
+    'usertype' => $usertype
+];
 
-if ($category) {
-    $sql .= " AND CatCurso.id = :category";
-    $params['category'] = $category;
-}
-if ($course) {
-    $sql .= " AND Curso.id = :course";
-    $params['course'] = $course;
-}
-if ($firstname) {
-    $sql .= " AND usua.firstname LIKE :firstname";
-    $params['firstname'] = "$firstname%";
-}
-if ($lastname) {
-    $sql .= " AND usua.lastname LIKE :lastname";
-    $params['lastname'] = "$lastname%";
-}
-if ($usertype) {
-    $sql .= " AND d1.data = :usertype";
-    $params['usertype'] = $usertype;
-}
-
-$records = $DB->get_records_sql($sql, $params); //linea 68 
+$records = get_certificates_records($params, $DB);
 
 $data = new stdClass();
 $data->tabhead = ['Cedula', 'Nombres', 'Apellidos', 'Clinica', 'Area', 'NombreCurso', 'Fecha', 'CategoriaCurso', 'User Type'];
@@ -117,10 +75,11 @@ echo '<div class="col-auto">';
 echo '<label for="category" class="mr-2">Category:</label>';
 echo '<select id="category" name="category" class="form-control mb-2">';
 echo '<option value="">All</option>';
-$categories = $DB->get_records('course_categories');
+$categories = get_all_categories($DB);
 foreach ($categories as $categoryObj) {
     $selected = $category == $categoryObj->id ? 'selected' : '';
-    echo '<option value="'.$categoryObj->id.'" '.$selected.'>'.$categoryObj->name.'</option>';
+    $categoryPath = get_category_path($categoryObj->id, $DB);
+    echo '<option value="'.$categoryObj->id.'" '.$selected.'>'.$categoryPath.'</option>';
 }
 echo '</select>';
 echo '</div>';
@@ -129,12 +88,10 @@ echo '<div class="col-auto">';
 echo '<label for="course" class="mr-2">Course:</label>';
 echo '<select id="course" name="course" class="form-control mb-2">';
 echo '<option value="">All</option>';
-if ($category) {
-    $courses = $DB->get_records('course', array('category' => $category), 'fullname ASC', 'id, fullname');
-    foreach ($courses as $courseObj) {
-        $selected = $course == $courseObj->id ? 'selected' : '';
-        echo '<option value="'.$courseObj->id.'" '.$selected.'>'.$courseObj->fullname.'</option>';
-    }
+$courses = get_courses_by_category($category, $DB);
+foreach ($courses as $courseObj) {
+    $selected = $course == $courseObj->id ? 'selected' : '';
+    echo '<option value="'.$courseObj->id.'" '.$selected.'>'.$courseObj->fullname.'</option>';
 }
 echo '</select>';
 echo '</div>';
@@ -143,7 +100,7 @@ echo '<div class="col-auto">';
 echo '<label for="usertype" class="mr-2">User Type:</label>';
 echo '<select id="usertype" name="usertype" class="form-control mb-2">';
 echo '<option value="">All</option>';
-$userTypes = $DB->get_records_sql("SELECT DISTINCT d1.data AS usertype FROM {user_info_data} d1 JOIN {user_info_field} f1 ON d1.fieldid = f1.id WHERE f1.shortname = 'user_type'");
+$userTypes = get_user_types($DB);
 foreach ($userTypes as $type) {
     $selected = $usertype == $type->usertype ? 'selected' : '';
     echo '<option value="'.$type->usertype.'" '.$selected.'>'.$type->usertype.'</option>';
