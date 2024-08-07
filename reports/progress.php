@@ -15,69 +15,15 @@ $lastname = optional_param('lastname', '', PARAM_TEXT);
 $usertype = optional_param('usertype', '', PARAM_TEXT); // New parameter for user type
 $format = optional_param('format', 'excel', PARAM_TEXT);
 
-$params = [];
-$sql = "SELECT
-            gg.id AS uniqueid,
-            u.idnumber AS cedula,
-            u.username AS usuario,
-            u.firstname AS nombre, 
-            u.lastname AS apellido, 
-            CONCAT(u.firstname,' ',u.lastname) AS nombre_completo, 
-            u.institution AS clinica,
-            u.department AS area,
-            cc.name AS categoria,
-            c.shortname AS curso,
-            CASE 
-                WHEN gi.itemtype = 'course' 
-                THEN c.fullname
-                ELSE gi.itemname
-            END AS item,
-            ROUND(gg.finalgrade, 2) AS calificacion,
-            FROM_UNIXTIME(gg.timemodified) AS fecha,
-            COALESCE(d1.data, 'No asignado') AS user_type
-        FROM 
-            {course} AS c
-        JOIN 
-            {context} AS ctx ON c.id = ctx.instanceid
-        JOIN 
-            {role_assignments} AS ra ON ra.contextid = ctx.id
-        JOIN 
-            {user} AS u ON u.id = ra.userid
-        JOIN 
-            {grade_grades} AS gg ON gg.userid = u.id
-        JOIN 
-            {grade_items} AS gi ON gi.id = gg.itemid
-        JOIN 
-            {course_categories} AS cc ON cc.id = c.category
-        JOIN
-            {user_info_data} d1 ON d1.userid = u.id
-        JOIN
-            {user_info_field} f1 ON d1.fieldid = f1.id AND f1.shortname = 'user_type'
-        WHERE 
-            gi.courseid = c.id";
+$params = [
+    'category' => $category,
+    'course' => $course,
+    'firstname' => $firstname,
+    'lastname' => $lastname,
+    'usertype' => $usertype
+];
 
-if ($category) {
-    $sql .= " AND cc.id = :category";
-    $params['category'] = $category;
-}
-if ($course) {
-    $sql .= " AND c.id = :course";
-    $params['course'] = $course;
-}
-if ($firstname) {
-    $sql .= " AND u.firstname LIKE :firstname";
-    $params['firstname'] = "$firstname%";
-}
-if ($lastname) {
-    $sql .= " AND u.lastname LIKE :lastname";
-    $params['lastname'] = "$lastname%";
-}
-if ($usertype) {
-    $sql .= " AND d1.data = :usertype";
-    $params['usertype'] = $usertype;
-}
-
-$records = $DB->get_records_sql($sql, $params);
+$records = get_progress_records($params, $DB);
 
 $data = new stdClass();
 $data->tabhead = ['Cedula', 'Usuario', 'Nombre', 'Apellido', 'Nombre Completo', 'Clinica', 'Area', 'Categoria', 'Curso', 'Item', 'Calificacion', 'Fecha', 'User Type'];
@@ -133,10 +79,11 @@ echo '<div class="col-auto">';
 echo '<label for="category" class="mr-2">Category:</label>';
 echo '<select id="category" name="category" class="form-control mb-2">';
 echo '<option value="">All</option>';
-$categories = $DB->get_records('course_categories');
+$categories = get_all_categories($DB);
 foreach ($categories as $categoryObj) {
     $selected = $category == $categoryObj->id ? 'selected' : '';
-    echo '<option value="' . $categoryObj->id . '" ' . $selected . '>' . $categoryObj->name . '</option>';
+    $categoryPath = get_category_path($categoryObj->id, $DB);
+    echo '<option value="' . $categoryObj->id . '" ' . $selected . '>' . $categoryPath . '</option>';
 }
 echo '</select>';
 echo '</div>';
@@ -145,12 +92,10 @@ echo '<div class="col-auto">';
 echo '<label for="course" class="mr-2">Course:</label>';
 echo '<select id="course" name="course" class="form-control mb-2">';
 echo '<option value="">All</option>';
-if ($category) {
-    $courses = $DB->get_records('course', array('category' => $category), 'fullname ASC', 'id, fullname');
-    foreach ($courses as $courseObj) {
-        $selected = $course == $courseObj->id ? 'selected' : '';
-        echo '<option value="' . $courseObj->id . '" ' . $selected . '>' . $courseObj->fullname . '</option>';
-    }
+$courses = get_courses_by_category($category, $DB);
+foreach ($courses as $courseObj) {
+    $selected = $course == $courseObj->id ? 'selected' : '';
+    echo '<option value="' . $courseObj->id . '" ' . $selected . '>' . $courseObj->fullname . '</option>';
 }
 echo '</select>';
 echo '</div>';
@@ -160,7 +105,7 @@ echo '<div class="col-auto">';
 echo '<label for="usertype" class="mr-2">User Type:</label>';
 echo '<select id="usertype" name="usertype" class="form-control mb-2">';
 echo '<option value="">All</option>';
-$userTypes = $DB->get_records_sql("SELECT DISTINCT d1.data AS usertype FROM {user_info_data} d1 JOIN {user_info_field} f1 ON d1.fieldid = f1.id WHERE f1.shortname = 'user_type'");
+$userTypes = get_user_types($DB);
 foreach ($userTypes as $type) {
     $selected = $usertype == $type->usertype ? 'selected' : '';
     echo '<option value="'.$type->usertype.'" '.$selected.'>'.$type->usertype.'</option>';
@@ -256,9 +201,11 @@ $baseurl = new moodle_url('/blocks/reports_custom/reports/progress.php', [
     'category' => $category,
     'course' => $course,
     'firstname' => $firstname,
-    'lastname' => $lastname
+    'lastname' => $lastname,
+    'usertype' => $usertype // Added to the URL for paging
 ]);
 echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
 
 echo '</div>';
 echo $OUTPUT->footer();
+?>
