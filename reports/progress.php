@@ -8,13 +8,15 @@ require_login();
 $context = context_system::instance();
 require_capability('moodle/site:config', $context);
 
+// Captura de parámetros
 $category = optional_param('category', '', PARAM_INT);
 $course = optional_param('course', '', PARAM_INT);
 $firstname = optional_param('firstname', '', PARAM_TEXT);
 $lastname = optional_param('lastname', '', PARAM_TEXT);
-$usertype = optional_param('usertype', '', PARAM_TEXT); // New parameter for user type
+$usertype = optional_param('usertype', '', PARAM_TEXT); // Nuevo parámetro para tipo de usuario
 $format = optional_param('format', 'excel', PARAM_TEXT);
 
+// Preparando parámetros para la consulta
 $params = [
     'category' => $category,
     'course' => $course,
@@ -23,6 +25,7 @@ $params = [
     'usertype' => $usertype
 ];
 
+// Recuperando registros aplicando filtros
 $records = get_progress_records($params, $DB);
 
 $data = new stdClass();
@@ -46,8 +49,9 @@ foreach ($records as $record) {
     ];
 }
 
+// Exportación de datos
 if (optional_param('download', '', PARAM_TEXT)) {
-    // Clean the output buffer to fix the headers already sent error
+    // Limpiar el buffer de salida para solucionar el error de headers already sent
     while (ob_get_level()) {
         ob_end_clean();
     }
@@ -60,6 +64,7 @@ if (optional_param('download', '', PARAM_TEXT)) {
     exit;
 }
 
+// Configuración de la página y carga de recursos necesarios
 $PAGE->set_url(new moodle_url('/blocks/reports_custom/reports/progress.php'));
 $PAGE->set_context($context);
 $PAGE->set_title('Progress Report');
@@ -99,7 +104,6 @@ foreach ($courses as $courseObj) {
 }
 echo '</select>';
 echo '</div>';
-echo '</div>';
 
 echo '<div class="col-auto">';
 echo '<label for="usertype" class="mr-2">User Type:</label>';
@@ -113,7 +117,6 @@ foreach ($userTypes as $type) {
 echo '</select>';
 echo '</div>';
 echo '</div>';
-
 
 echo '<div class="form-row align-items-center">';
 echo '<div class="col-auto">';
@@ -186,6 +189,11 @@ foreach ($records as $record) {
 echo html_writer::table($table);
 
 echo '<form id="downloadForm" method="GET">';
+echo '<input type="hidden" name="category" value="'.$category.'">';
+echo '<input type="hidden" name="course" value="'.$course.'">';
+echo '<input type="hidden" name="firstname" value="'.$firstname.'">';
+echo '<input type="hidden" name="lastname" value="'.$lastname.'">';
+echo '<input type="hidden" name="usertype" value="'.$usertype.'">';
 echo '<div class="form-group">';
 echo '<label for="format" class="mr-2">Formato de descarga:</label>';
 echo '<select id="format" name="format" class="form-control d-inline w-auto">';
@@ -202,7 +210,7 @@ $baseurl = new moodle_url('/blocks/reports_custom/reports/progress.php', [
     'course' => $course,
     'firstname' => $firstname,
     'lastname' => $lastname,
-    'usertype' => $usertype // Added to the URL for paging
+    'usertype' => $usertype // Añadido a la URL para paginación
 ]);
 echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
 
