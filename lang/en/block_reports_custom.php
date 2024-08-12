@@ -51,5 +51,9 @@ $string['btn_descargar'] = 'Download';
 $string['alphabet_all'] = 'All';
 $string['total_records'] = 'Total Records';
 
+// lang/en/block_reports_custom.php
+$string['idnumber'] = 'ID Number';
+$string['start_date'] = 'Start Date';
+$string['end_date'] = 'End Date';
 
 ?>
