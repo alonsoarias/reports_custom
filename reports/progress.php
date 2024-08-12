@@ -12,6 +12,9 @@ $course = optional_param('course', '', PARAM_INT);
 $firstname = optional_param('firstname', '', PARAM_TEXT);
 $lastname = optional_param('lastname', '', PARAM_TEXT);
 $usertype = optional_param('usertype', '', PARAM_TEXT);
+$idnumber = optional_param('idnumber', '', PARAM_TEXT);
+$startdate = optional_param('startdate', '', PARAM_TEXT);
+$enddate = optional_param('enddate', '', PARAM_TEXT);
 $format = optional_param('format', 'excel', PARAM_TEXT);
 
 // Preparando parámetros para la consulta
@@ -22,6 +25,15 @@ $params = [
     'lastname' => $lastname,
     'usertype' => $usertype
 ];
+
+// Ajustar el formato de las fechas para la consulta SQL
+if (!empty($startdate)) {
+    $params['startdate'] = strtotime($startdate);
+}
+
+if (!empty($enddate)) {
+    $params['enddate'] = strtotime($enddate . ' 23:59:59');
+}
 
 // Recuperando registros aplicando filtros
 $records = get_progress_records($params, $DB);
@@ -83,7 +95,6 @@ $PAGE->set_title(get_string('progress_report', 'block_reports_custom'));
 $PAGE->set_heading(get_string('progress_report', 'block_reports_custom'));
 $PAGE->requires->jquery();
 $PAGE->requires->js(new moodle_url('/blocks/reports_custom/reports/progress.js'));
-$PAGE->requires->css(new moodle_url('/blocks/reports_custom/reports/styles.css'));
 
 $perpage = 100;
 $page = optional_param('page', 0, PARAM_INT);
@@ -115,6 +126,23 @@ foreach ($courses as $courseObj) {
     echo '<option value="' . $courseObj->id . '" ' . $selected . '>' . $courseObj->fullname . '</option>';
 }
 echo '</select>';
+echo '</div>';
+
+echo '<div class="form-row align-items-center">';
+echo '<div class="col-auto">';
+echo '<label for="idnumber" class="mr-2">'.get_string('idnumber', 'block_reports_custom').':</label>';
+echo '<input type="text" id="idnumber" name="idnumber" value="'.$idnumber.'" class="form-control mb-2">';
+echo '</div>';
+
+echo '<div class="col-auto">';
+echo '<label for="startdate" class="mr-2">'.get_string('start_date', 'block_reports_custom').':</label>';
+echo '<input type="date" id="startdate" name="startdate" value="'.$startdate.'" class="form-control mb-2">';
+echo '</div>';
+
+echo '<div class="col-auto">';
+echo '<label for="enddate" class="mr-2">'.get_string('end_date', 'block_reports_custom').':</label>';
+echo '<input type="date" id="enddate" name="enddate" value="'.$enddate.'" class="form-control mb-2">';
+echo '</div>';
 echo '</div>';
 
 echo '<div class="col-auto">';
@@ -197,6 +225,9 @@ echo '<input type="hidden" name="course" value="'.$course.'">';
 echo '<input type="hidden" name="firstname" value="'.$firstname.'">';
 echo '<input type="hidden" name="lastname" value="'.$lastname.'">';
 echo '<input type="hidden" name="usertype" value="'.$usertype.'">';
+echo '<input type="hidden" name="idnumber" value="'.$idnumber.'">';
+echo '<input type="hidden" name="startdate" value="'.$startdate.'">';
+echo '<input type="hidden" name="enddate" value="'.$enddate.'">';
 echo '<div class="form-group">';
 echo '<label for="format" class="mr-2">'.get_string('option_download_format', 'block_reports_custom').':</label>';
 echo '<select id="format" name="format" class="form-control d-inline w-auto">';
@@ -213,7 +244,10 @@ $baseurl = new moodle_url('/blocks/reports_custom/reports/progress.php', [
     'course' => $course,
     'firstname' => $firstname,
     'lastname' => $lastname,
-    'usertype' => $usertype
+    'usertype' => $usertype,
+    'idnumber' => $idnumber,
+    'startdate' => $startdate,
+    'enddate' => $enddate
 ]);
 echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
 
