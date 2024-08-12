@@ -51,6 +51,16 @@ $(document).ready(function() {
         updateReport();
     });
 
+    // Evento change para los campos de fecha
+    $('#startdate, #enddate').change(function() {
+        updateReport();
+    });
+
+    // Evento input para el campo de texto idnumber
+    $('#idnumber').on('input', function() {
+        updateReport();
+    });
+
     // Evento click para los filtros alfabéticos
     $(document).on('click', '.alphabet-filter a', function(e) {
         e.preventDefault();
