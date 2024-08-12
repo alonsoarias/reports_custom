@@ -199,10 +199,10 @@ function get_progress_records($params, $DB)
                 {grade_items} AS gi ON gi.id = gg.itemid
             JOIN 
                 {course_categories} AS cc ON cc.id = c.category
-            JOIN
-                {user_info_data} d1 ON d1.userid = u.id
-            JOIN
-                {user_info_field} f1 ON d1.fieldid = f1.id AND f1.shortname = 'user_type'
+            LEFT JOIN
+                {user_info_field} f1 ON f1.shortname = 'user_type'
+            LEFT JOIN
+                {user_info_data} d1 ON d1.userid = u.id AND d1.fieldid = f1.id
             WHERE 
                 gi.courseid = c.id";
 
@@ -223,10 +223,23 @@ function get_progress_records($params, $DB)
     if (!empty($params['usertype'])) {
         $sql .= " AND d1.data = :usertype";
     }
+    // Ejemplo para agregar el filtro de idnumber
+    if (!empty($params['idnumber'])) {
+        $sql .= " AND u.idnumber LIKE :idnumber";
+        $params['idnumber'] = '%' . $params['idnumber'] . '%';
+    }
+
+    // Ejemplo para filtrar por fechas
+    if (!empty($params['startdate'])) {
+        $sql .= " AND gg.timemodified >= :startdate";
+    }
+
+    if (!empty($params['enddate'])) {
+        $sql .= " AND gg.timemodified <= :enddate";
+    }
 
 return $DB->get_records_sql($sql, $params);
 }
-
 /**
  * Get certificate records.
  *
@@ -256,10 +269,10 @@ function get_certificates_records($params, $DB) {
                 {user} AS usua ON usua.id = CerGene.userid
             JOIN
                 {course_categories} AS CatCurso ON Curso.category = CatCurso.id
-            JOIN
-                {user_info_data} d1 ON d1.userid = usua.id
-            JOIN
-                {user_info_field} f1 ON d1.fieldid = f1.id AND f1.shortname = 'user_type'
+            LEFT JOIN
+                {user_info_field} f1 ON f1.shortname = 'user_type'
+            LEFT JOIN
+                {user_info_data} d1 ON d1.userid = usua.id AND d1.fieldid = f1.id
             WHERE
                 usua.idnumber <> ''";
 
@@ -279,6 +292,22 @@ function get_certificates_records($params, $DB) {
     }
     if (!empty($params['usertype'])) {
         $sql .= " AND d1.data = :usertype";
+    }
+    // Agregar filtro de idnumber
+    if (!empty($params['idnumber'])) {
+        $sql .= " AND usua.idnumber LIKE :idnumber";
+        $params['idnumber'] = '%' . $params['idnumber'] . '%';
+    }
+
+    // Filtrar por fechas
+    if (!empty($params['startdate'])) {
+        $sql .= " AND CerGene.timecreated >= :startdate";
+        $params['startdate'] = strtotime($params['startdate']);
+    }
+
+    if (!empty($params['enddate'])) {
+        $sql .= " AND CerGene.timecreated <= :enddate";
+        $params['enddate'] = strtotime($params['enddate'] . ' 23:59:59');
     }
 
     return $DB->get_records_sql($sql, $params);
