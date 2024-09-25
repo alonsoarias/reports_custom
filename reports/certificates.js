@@ -2,12 +2,12 @@ $(document).ready(function() {
     // Function to update the report dynamically
     function updateReport() {
         $.ajax({
-            url: window.location.href,  // Make sure this points to the correct URL
+            url: window.location.href,
             type: 'GET',
-            data: $('#filtersForm').serialize(),  // Serializes the form's elements.
+            data: $('#filtersForm').serialize(),
             success: function(data) {
                 $('#reportData').html($(data).find('#reportData').html());
-                initializePagination();  // Reinitialize pagination after update
+                initializePagination();
             },
             error: function() {
                 alert("Error updating report.");
@@ -28,17 +28,21 @@ $(document).ready(function() {
     // Handler for changes in category which updates courses dynamically
     $('#category').change(function() {
         var categoryId = $(this).val();
+        var allowedCategories = $('input[name="allowed_categories"]').val();
         $.ajax({
-            url: 'get_courses.php',  // Make sure this URL is correct and accessible
+            url: 'get_courses.php',
             type: 'GET',
-            data: { category: categoryId },
+            data: { 
+                category: categoryId,
+                allowed_categories: allowedCategories
+            },
             success: function(data) {
                 var courses = JSON.parse(data);
                 $('#course').empty().append('<option value="">All</option>');
                 $.each(courses, function(index, course) {
                     $('#course').append('<option value="' + course.id + '">' + course.fullname + '</option>');
                 });
-                updateReport();  // Update report after changing courses
+                updateReport();
             },
             error: function() {
                 alert("Error loading courses.");
@@ -53,7 +57,6 @@ $(document).ready(function() {
 
     // Specifically handling date changes
     $('#startdate, #enddate').change(function() {
-        // Validate if dates are in the correct range or format if necessary
         updateReport();
     });
 
@@ -68,7 +71,7 @@ $(document).ready(function() {
         var letter = $(this).data('letter');
         var filter = $(this).closest('.alphabet-filter').data('filter');
         $('input[name="' + filter + '"]').val(letter);
-        updateReport();  // Update report after changing filters
+        updateReport();
     });
 
     // Initialize pagination dynamically
@@ -77,11 +80,19 @@ $(document).ready(function() {
             e.preventDefault();
             var page = $(this).attr('href').split('page=')[1];
             $('input[name="page"]').val(page);
-            updateReport();  // Update report when pagination changes
+            updateReport();
         });
     }
 
     // Initialize functions on page load
     initializePagination();
     updateActiveFilters();
+
+    // Add allowed_categories to all form submissions
+    $('form').submit(function() {
+        var allowedCategories = $('input[name="allowed_categories"]').val();
+        if (allowedCategories) {
+            $(this).append('<input type="hidden" name="allowed_categories" value="' + allowedCategories + '">');
+        }
+    });
 });
