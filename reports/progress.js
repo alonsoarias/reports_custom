@@ -1,5 +1,5 @@
 $(document).ready(function() {
-    // Función para actualizar el reporte
+    // Función para actualizar el reporte dinámicamente
     function updateReport() {
         $.ajax({
             url: window.location.href,
@@ -15,7 +15,7 @@ $(document).ready(function() {
         });
     }
 
-    // Función para actualizar filtros activos en la navegación alfabética
+    // Función para actualizar filtros activos para la navegación alfabética
     function updateActiveFilters() {
         $('.alphabet-filter a').removeClass('active');
         $('.alphabet-filter').each(function() {
@@ -24,14 +24,17 @@ $(document).ready(function() {
             $(this).find('a[data-letter="' + value + '"]').addClass('active');
         });
     }
-
-    // Evento change para el filtro de categoría
+    // Manejador para cambios en categoría que actualiza los cursos dinámicamente
     $('#category').change(function() {
         var categoryId = $(this).val();
+        var allowedCategories = $('input[name="allowed_categories"]').val();
         $.ajax({
             url: 'get_courses.php',
             type: 'GET',
-            data: { category: categoryId },
+            data: { 
+                category: categoryId,
+                allowed_categories: allowedCategories
+            },
             success: function(data) {
                 var courses = JSON.parse(data);
                 $('#course').empty().append('<option value="">All</option>');
@@ -45,23 +48,22 @@ $(document).ready(function() {
             }
         });
     });
-
-    // Evento change para los filtros de curso y tipo de usuario
+    // Manejadores de eventos para filtros incluyendo cursos, tipo de usuario y campos de fecha
     $('#course, #usertype').change(function() {
         updateReport();
     });
 
-    // Evento change para los campos de fecha
+    // Manejo específico de cambios en fechas
     $('#startdate, #enddate').change(function() {
         updateReport();
     });
 
-    // Evento input para el campo de texto idnumber
+    // Manejo de cambios en el campo de número de identificación dinámicamente
     $('#idnumber').on('input', function() {
         updateReport();
     });
 
-    // Evento click para los filtros alfabéticos
+    // Manejo de filtro alfabético
     $(document).on('click', '.alphabet-filter a', function(e) {
         e.preventDefault();
         var letter = $(this).data('letter');
@@ -69,8 +71,7 @@ $(document).ready(function() {
         $('input[name="' + filter + '"]').val(letter);
         updateReport();
     });
-
-    // Función para inicializar la paginación
+    // Inicializar paginación dinámicamente
     function initializePagination() {
         $('.paging_bar a').on('click', function(e) {
             e.preventDefault();
@@ -80,7 +81,15 @@ $(document).ready(function() {
         });
     }
 
-    // Inicialización de funciones al cargar la página
+    // Inicializar funciones al cargar la página
     initializePagination();
     updateActiveFilters();
+
+    // Agregar allowed_categories a todos los envíos de formularios
+    $('form').submit(function() {
+        var allowedCategories = $('input[name="allowed_categories"]').val();
+        if (allowedCategories) {
+            $(this).append('<input type="hidden" name="allowed_categories" value="' + allowedCategories + '">');
+        }
+    });
 });
