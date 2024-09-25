@@ -17,7 +17,6 @@ function export_to_spreadsheet($headers, $rows, $filename, $format, $sheetname =
 {
     global $CFG;
 
-    // Clean the output buffer to fix the headers already sent error
     while (ob_get_level()) {
         ob_end_clean();
     }
@@ -30,22 +29,17 @@ function export_to_spreadsheet($headers, $rows, $filename, $format, $sheetname =
         $workbook = new MoodleODSWorkbook("-");
     }
 
-    // Sending HTTP headers.
     $workbook->send($filename);
 
-    // Creating the worksheet.
     $worksheet = $workbook->add_worksheet($sheetname);
 
-    // Define the format for the header.
     $formatbc = $workbook->add_format(array('bold' => 1));
 
-    // Write the headers.
     $col = 0;
     foreach ($headers as $header) {
         $worksheet->write(0, $col++, $header, $formatbc);
     }
 
-    // Write the data.
     $row = 1;
     foreach ($rows as $record) {
         $col = 0;
@@ -67,7 +61,6 @@ function export_to_spreadsheet($headers, $rows, $filename, $format, $sheetname =
  */
 function export_to_csv($headers, $rows, $filename)
 {
-    // Clean the output buffer to fix the headers already sent error
     while (ob_get_level()) {
         ob_end_clean();
     }
@@ -86,10 +79,8 @@ function export_to_csv($headers, $rows, $filename)
         return;
     }
 
-    // Output headers.
     fputcsv($output, $headers);
 
-    // Output data.
     foreach ($rows as $record) {
         fputcsv($output, $record);
     }
@@ -148,98 +139,74 @@ function get_courses_by_category($categoryId, $DB)
 }
 
 /**
- * Get distinct user types.
+ * Get distinct user types including 'No asignado'.
  *
  * @param object $DB The database object.
  * @return array The list of user types.
  */
 function get_user_types($DB)
 {
-    return $DB->get_records_sql("SELECT DISTINCT d1.data AS usertype FROM {user_info_data} d1 JOIN {user_info_field} f1 ON d1.fieldid = f1.id WHERE f1.shortname = 'user_type'");
+    $sql = "SELECT DISTINCT d1.data AS usertype 
+            FROM {user_info_data} d1 
+            JOIN {user_info_field} f1 ON d1.fieldid = f1.id 
+            WHERE f1.shortname = 'user_type'";
+
+    $usertypes = $DB->get_records_sql($sql);
+
+    $usertypesArray = array_map(function($record) {
+        return $record->usertype;
+    }, $usertypes);
+
+    if (!in_array('No asignado', $usertypesArray)) {
+        $usertypesArray[] = 'No asignado';
+    }
+
+    $result = [];
+    foreach ($usertypesArray as $usertype) {
+        $result[] = (object)['usertype' => $usertype];
+    }
+
+    return $result;
 }
 
 /**
- * Get progress records.
+ * Get allowed categories for a user based on their roles.
  *
- * @param array $params The parameters for the query.
- * @param object $DB The database object.
- * @return array The list of progress records.
+ * @param int $userid The ID of the user.
+ * @return array|null The list of allowed category IDs or null if no restrictions.
  */
-function get_progress_records($params, $DB)
-{
-    $sql = "SELECT
-                gg.id AS uniqueid,
-                u.idnumber AS cedula,
-                u.username AS usuario,
-                u.firstname AS nombre, 
-                u.lastname AS apellido, 
-                CONCAT(u.firstname, ' ', u.lastname) AS nombre_completo, 
-                u.institution AS clinica,
-                u.department AS area,
-                cc.name AS categoria,
-                c.shortname AS curso,
-                CASE 
-                    WHEN gi.itemtype = 'course' THEN c.fullname
-                    ELSE gi.itemname
-                END AS item,
-                ROUND(gg.finalgrade, 2) AS calificacion,
-                FROM_UNIXTIME(gg.timemodified) AS fecha,
-                COALESCE(d1.data, 'No asignado') AS user_type
-            FROM 
-                {course} AS c
-            JOIN 
-                {context} AS ctx ON c.id = ctx.instanceid
-            JOIN 
-                {role_assignments} AS ra ON ra.contextid = ctx.id
-            JOIN 
-                {user} AS u ON u.id = ra.userid
-            JOIN 
-                {grade_grades} AS gg ON gg.userid = u.id
-            JOIN 
-                {grade_items} AS gi ON gi.id = gg.itemid
-            JOIN 
-                {course_categories} AS cc ON cc.id = c.category
-            LEFT JOIN
-                {user_info_field} f1 ON f1.shortname = 'user_type'
-            LEFT JOIN
-                {user_info_data} d1 ON d1.userid = u.id AND d1.fieldid = f1.id
-            WHERE 
-                gi.courseid = c.id";
+function get_allowed_categories_for_user($userid) {
+    global $DB;
 
-    if (!empty($params['category'])) {
-        $sql .= " AND cc.id = :category";
-    }
-    if (!empty($params['course'])) {
-        $sql .= " AND c.id = :course";
-    }
-    if (!empty($params['firstname'])) {
-        $sql .= " AND u.firstname LIKE :firstname";
-        $params['firstname'] = $params['firstname'] . "%";
-    }
-    if (!empty($params['lastname'])) {
-        $sql .= " AND u.lastname LIKE :lastname";
-        $params['lastname'] = $params['lastname'] . "%";
-    }
-    if (!empty($params['usertype'])) {
-        $sql .= " AND d1.data = :usertype";
-    }
-    // Ejemplo para agregar el filtro de idnumber
-    if (!empty($params['idnumber'])) {
-        $sql .= " AND u.idnumber LIKE :idnumber";
-        $params['idnumber'] = '%' . $params['idnumber'] . '%';
+    $userRoles = $DB->get_records_sql("
+        SELECT DISTINCT r.id, r.shortname
+        FROM {role_assignments} ra
+        JOIN {role} r ON ra.roleid = r.id
+        WHERE ra.userid = ?
+    ", array($userid));
+
+    $restrictedRoles = [11, 12];
+    $userHasRestrictedRole = false;
+    $allowedCategories = array();
+
+    foreach ($userRoles as $role) {
+        if ($role->id == 11) {
+            $userHasRestrictedRole = true;
+            $allowedCategories[] = 72;
+        } elseif ($role->id == 12) {
+            $userHasRestrictedRole = true;
+            $allowedCategories[] = 74;
+        }
     }
 
-    // Ejemplo para filtrar por fechas
-    if (!empty($params['startdate'])) {
-        $sql .= " AND gg.timemodified >= :startdate";
+    // Si el usuario no tiene un rol restringido, retornar null (sin restricciones)
+    if (!$userHasRestrictedRole) {
+        return null;
     }
 
-    if (!empty($params['enddate'])) {
-        $sql .= " AND gg.timemodified <= :enddate";
-    }
-
-return $DB->get_records_sql($sql, $params);
+    return array_unique($allowedCategories);
 }
+
 /**
  * Get certificate records.
  *
@@ -293,21 +260,93 @@ function get_certificates_records($params, $DB) {
     if (!empty($params['usertype'])) {
         $sql .= " AND d1.data = :usertype";
     }
-    // Agregar filtro de idnumber
     if (!empty($params['idnumber'])) {
         $sql .= " AND usua.idnumber LIKE :idnumber";
         $params['idnumber'] = '%' . $params['idnumber'] . '%';
     }
-
-    // Filtrar por fechas
     if (!empty($params['startdate'])) {
         $sql .= " AND CerGene.timecreated >= :startdate";
-        $params['startdate'] = strtotime($params['startdate']);
     }
-
     if (!empty($params['enddate'])) {
         $sql .= " AND CerGene.timecreated <= :enddate";
-        $params['enddate'] = strtotime($params['enddate'] . ' 23:59:59');
+    }
+    if (!empty($params['allowed_categories'])) {
+        $sql .= " AND Curso.category IN (" . $params['allowed_categories'] . ")";
+    }
+
+    return $DB->get_records_sql($sql, $params);
+}
+
+/**
+ * Get progress records.
+ *
+ * @param array $params The parameters for the query.
+ * @param object $DB The database object.
+ * @return array The list of progress records.
+ */
+function get_progress_records($params, $DB) {
+    $sql = "SELECT
+                CONCAT(gg.id, '_', gg.userid, '_', gi.id) AS unique_id,
+                u.id AS userid,
+                u.idnumber AS cedula,
+                u.username AS usuario,
+                u.firstname AS nombre,
+                u.lastname AS apellido,
+                CONCAT(u.firstname, ' ', u.lastname) AS nombre_completo,
+                u.institution AS clinica,
+                u.department AS area,
+                cc.name AS categoria,
+                c.fullname AS curso,
+                gi.itemname AS item,
+                gg.finalgrade AS calificacion,
+                FROM_UNIXTIME(gg.timemodified) AS fecha,
+                COALESCE(d1.data, 'No asignado') AS user_type
+            FROM
+                {grade_grades} gg
+            JOIN
+                {grade_items} gi ON gg.itemid = gi.id
+            JOIN
+                {course} c ON gi.courseid = c.id
+            JOIN
+                {course_categories} cc ON c.category = cc.id
+            JOIN
+                {user} u ON gg.userid = u.id
+            LEFT JOIN
+                {user_info_field} f1 ON f1.shortname = 'user_type'
+            LEFT JOIN
+                {user_info_data} d1 ON d1.userid = u.id AND d1.fieldid = f1.id
+            WHERE
+                u.idnumber <> ''";
+
+    if (!empty($params['category'])) {
+        $sql .= " AND c.category = :category";
+    }
+    if (!empty($params['course'])) {
+        $sql .= " AND c.id = :course";
+    }
+    if (!empty($params['firstname'])) {
+        $sql .= " AND u.firstname LIKE :firstname";
+        $params['firstname'] = $params['firstname'] . "%";
+    }
+    if (!empty($params['lastname'])) {
+        $sql .= " AND u.lastname LIKE :lastname";
+        $params['lastname'] = $params['lastname'] . "%";
+    }
+    if (!empty($params['usertype'])) {
+        $sql .= " AND d1.data = :usertype";
+    }
+    if (!empty($params['idnumber'])) {
+        $sql .= " AND u.idnumber LIKE :idnumber";
+        $params['idnumber'] = '%' . $params['idnumber'] . '%';
+    }
+    if (!empty($params['startdate'])) {
+        $sql .= " AND gg.timemodified >= :startdate";
+    }
+    if (!empty($params['enddate'])) {
+        $sql .= " AND gg.timemodified <= :enddate";
+    }
+    if (!empty($params['allowed_categories'])) {
+        $sql .= " AND c.category IN (" . $params['allowed_categories'] . ")";
     }
 
     return $DB->get_records_sql($sql, $params);
