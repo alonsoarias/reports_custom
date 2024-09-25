@@ -17,27 +17,25 @@ $startdate = optional_param('startdate', '', PARAM_TEXT);
 $enddate = optional_param('enddate', '', PARAM_TEXT);
 $format = optional_param('format', 'excel', PARAM_TEXT);
 
+// Obtener categorías permitidas para el usuario actual
+$allowedCategories = get_allowed_categories_for_user($USER->id);
+$allowedCategoriesString = $allowedCategories ? implode(',', $allowedCategories) : '';
+
 // Preparando parámetros para la consulta
 $params = [
     'category' => $category,
     'course' => $course,
     'firstname' => $firstname,
     'lastname' => $lastname,
-    'usertype' => $usertype
+    'usertype' => $usertype,
+    'idnumber' => $idnumber,
+    'startdate' => !empty($startdate) ? strtotime($startdate) : null,
+    'enddate' => !empty($enddate) ? strtotime($enddate . ' 23:59:59') : null,
+    'allowed_categories' => $allowedCategoriesString
 ];
-
-// Ajustar el formato de las fechas para la consulta SQL
-if (!empty($startdate)) {
-    $params['startdate'] = strtotime($startdate);
-}
-
-if (!empty($enddate)) {
-    $params['enddate'] = strtotime($enddate . ' 23:59:59');
-}
 
 // Recuperando registros aplicando filtros
 $records = get_progress_records($params, $DB);
-
 $data = new stdClass();
 $data->tabhead = [
     get_string('header_cedula', 'block_reports_custom'),
@@ -55,6 +53,7 @@ $data->tabhead = [
     get_string('header_user_type', 'block_reports_custom')
 ];
 $data->table = [];
+
 foreach ($records as $record) {
     $data->table[] = [
         $record->cedula,
@@ -75,7 +74,6 @@ foreach ($records as $record) {
 
 // Exportación de datos
 if (optional_param('download', '', PARAM_TEXT)) {
-    // Limpiar el buffer de salida para solucionar el error de headers already sent
     while (ob_get_level()) {
         ob_end_clean();
     }
@@ -87,7 +85,6 @@ if (optional_param('download', '', PARAM_TEXT)) {
     }
     exit;
 }
-
 // Configuración de la página y carga de recursos necesarios
 $PAGE->set_url(new moodle_url('/blocks/reports_custom/reports/progress.php'));
 $PAGE->set_context($context);
@@ -101,6 +98,7 @@ $page = optional_param('page', 0, PARAM_INT);
 
 echo $OUTPUT->header();
 
+// Renderizado del formulario de filtros
 echo '<form id="filtersForm" method="GET" class="form-inline mb-3">';
 echo '<div class="form-row align-items-center">';
 echo '<div class="col-auto">';
@@ -109,13 +107,14 @@ echo '<select id="category" name="category" class="form-control mb-2">';
 echo '<option value="">'.get_string('option_todos', 'block_reports_custom').'</option>';
 $categories = get_all_categories($DB);
 foreach ($categories as $categoryObj) {
-    $selected = $category == $categoryObj->id ? 'selected' : '';
-    $categoryPath = get_category_path($categoryObj->id, $DB);
-    echo '<option value="' . $categoryObj->id . '" ' . $selected . '>' . $categoryPath . '</option>';
+    if ($allowedCategories === null || in_array($categoryObj->id, $allowedCategories)) {
+        $selected = $category == $categoryObj->id ? 'selected' : '';
+        $categoryPath = get_category_path($categoryObj->id, $DB);
+        echo '<option value="'.$categoryObj->id.'" '.$selected.'>'.$categoryPath.'</option>';
+    }
 }
 echo '</select>';
 echo '</div>';
-
 echo '<div class="col-auto">';
 echo '<label for="course" class="mr-2">'.get_string('option_course', 'block_reports_custom').':</label>';
 echo '<select id="course" name="course" class="form-control mb-2">';
@@ -123,7 +122,7 @@ echo '<option value="">'.get_string('option_todos', 'block_reports_custom').'</o
 $courses = get_courses_by_category($category, $DB);
 foreach ($courses as $courseObj) {
     $selected = $course == $courseObj->id ? 'selected' : '';
-    echo '<option value="' . $courseObj->id . '" ' . $selected . '>' . $courseObj->fullname . '</option>';
+    echo '<option value="'.$courseObj->id.'" '.$selected.'>'.$courseObj->fullname.'</option>';
 }
 echo '</select>';
 echo '</div>';
@@ -156,8 +155,8 @@ foreach ($userTypes as $type) {
 }
 echo '</select>';
 echo '</div>';
-echo '</div>';
 
+echo '</div>';
 echo '<div class="form-row align-items-center">';
 echo '<div class="col-auto">';
 echo '<label for="firstname" class="mr-2">'.get_string('option_nombre', 'block_reports_custom').':</label>';
@@ -165,10 +164,10 @@ echo '<div class="alphabet-filter d-flex mb-2" data-filter="firstname">';
 echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1" data-letter="">'.get_string('alphabet_all', 'block_reports_custom').'</a>';
 foreach (range('A', 'Z') as $letter) {
     $active = $firstname == $letter ? 'active' : '';
-    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 ' . $active . '" data-letter="' . $letter . '">' . $letter . '</a>';
+    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 '.$active.'" data-letter="'.$letter.'">'.$letter.'</a>';
 }
 echo '</div>';
-echo '<input type="hidden" name="firstname" value="' . $firstname . '">';
+echo '<input type="hidden" name="firstname" value="'.$firstname.'">';
 echo '</div>';
 
 echo '<div class="col-auto">';
@@ -177,10 +176,10 @@ echo '<div class="alphabet-filter d-flex mb-2" data-filter="lastname">';
 echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1" data-letter="">'.get_string('alphabet_all', 'block_reports_custom').'</a>';
 foreach (range('A', 'Z') as $letter) {
     $active = $lastname == $letter ? 'active' : '';
-    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 ' . $active . '" data-letter="' . $letter . '">' . $letter . '</a>';
+    echo '<a href="#" class="btn btn-outline-secondary btn-sm mr-1 '.$active.'" data-letter="'.$letter.'">'.$letter.'</a>';
 }
 echo '</div>';
-echo '<input type="hidden" name="lastname" value="' . $lastname . '">';
+echo '<input type="hidden" name="lastname" value="'.$lastname.'">';
 echo '</div>';
 echo '</div>';
 
@@ -228,6 +227,7 @@ echo '<input type="hidden" name="usertype" value="'.$usertype.'">';
 echo '<input type="hidden" name="idnumber" value="'.$idnumber.'">';
 echo '<input type="hidden" name="startdate" value="'.$startdate.'">';
 echo '<input type="hidden" name="enddate" value="'.$enddate.'">';
+echo '<input type="hidden" name="allowed_categories" value="'.$allowedCategoriesString.'">';
 echo '<div class="form-group">';
 echo '<label for="format" class="mr-2">'.get_string('option_download_format', 'block_reports_custom').':</label>';
 echo '<select id="format" name="format" class="form-control d-inline w-auto">';
@@ -247,7 +247,8 @@ $baseurl = new moodle_url('/blocks/reports_custom/reports/progress.php', [
     'usertype' => $usertype,
     'idnumber' => $idnumber,
     'startdate' => $startdate,
-    'enddate' => $enddate
+    'enddate' => $enddate,
+    'allowed_categories' => $allowedCategoriesString
 ]);
 echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
 
