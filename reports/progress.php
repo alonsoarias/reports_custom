@@ -18,7 +18,7 @@
  * Progress report page for block_reports_custom.
  *
  * @package    block_reports_custom
- * @copyright  2024 Your Organization
+ * @copyright  2025 Alonso Arias <soporte@ingeweb.co>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -135,9 +135,11 @@ $PAGE->set_title(get_string('progress_report', 'block_reports_custom'));
 $PAGE->set_heading(get_string('progress_report', 'block_reports_custom'));
 $PAGE->set_pagelayout('report');
 
-// Include JavaScript.
-$PAGE->requires->jquery();
-$PAGE->requires->js(new moodle_url('/blocks/reports_custom/reports/progress.js'));
+// Include AMD JavaScript module.
+$PAGE->requires->js_call_amd('block_reports_custom/progress', 'init', [[
+    'formSelector' => '#filtersForm',
+    'reportContainerSelector' => '#reportData',
+]]);
 
 // Get total count and paginated records.
 $totalcount = block_reports_custom_count_progress_records($filters);

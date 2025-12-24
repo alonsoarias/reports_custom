@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **AMD JavaScript modules** for modern Moodle standards:
+  - `amd/src/repository.js` - AJAX repository for API calls
+  - `amd/src/filter.js` - Filter management classes (FilterManager, AlphabetFilter, CourseSelector)
+  - `amd/src/certificates.js` - Certificates report controller
+  - `amd/src/progress.js` - Progress report controller
+  - Minified build versions in `amd/build/`
 - **Settings page** (`settings.php`) for administrative configuration
   - Role-to-category mappings (replaces hardcoded values)
   - Configurable records per page
@@ -81,6 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Legacy JavaScript files** (reports/certificates.js, reports/progress.js) - Replaced with AMD modules
+- **Direct jQuery usage** - Now using Moodle AMD module system
 - **Hardcoded role IDs** (11, 12) - Now configurable via settings
 - **Hardcoded category IDs** (72, 74) - Now configurable via settings
 - **Trailing `?>` tags** from all PHP files (Moodle standard)

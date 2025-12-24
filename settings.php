@@ -18,7 +18,7 @@
  * Settings for block_reports_custom.
  *
  * @package    block_reports_custom
- * @copyright  2024 Your Organization
+ * @copyright  2025 Alonso Arias <soporte@ingeweb.co>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

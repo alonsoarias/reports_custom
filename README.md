@@ -124,6 +124,17 @@ reports_custom/
 ├── lib.php                     # Library functions
 ├── version.php                 # Plugin version info
 ├── settings.php                # Admin settings
+├── amd/
+│   ├── src/
+│   │   ├── repository.js       # AJAX repository module
+│   │   ├── filter.js           # Filter handling module
+│   │   ├── certificates.js     # Certificates report controller
+│   │   └── progress.js         # Progress report controller
+│   └── build/
+│       ├── repository.min.js   # Minified repository
+│       ├── filter.min.js       # Minified filter
+│       ├── certificates.min.js # Minified certificates
+│       └── progress.min.js     # Minified progress
 ├── classes/
 │   └── privacy/
 │       └── provider.php        # GDPR privacy provider
@@ -136,9 +147,7 @@ reports_custom/
 │       └── block_reports_custom.php
 └── reports/
     ├── certificates.php        # Certificates report page
-    ├── certificates.js         # Certificates JS
     ├── progress.php            # Progress report page
-    ├── progress.js             # Progress JS
     ├── get_courses.php         # AJAX endpoint
     └── get_users.php           # AJAX endpoint
 ```
@@ -214,7 +223,7 @@ This plugin is licensed under the [GNU GPL v3](https://www.gnu.org/licenses/gpl-
 
 ## Credits
 
-- Developed by Your Organization
+- Developed by Alonso Arias <soporte@ingeweb.co>
 - Contributors welcome!
 
 ## See Also

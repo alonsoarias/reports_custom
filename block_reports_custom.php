@@ -18,7 +18,7 @@
  * Block reports_custom class definition.
  *
  * @package    block_reports_custom
- * @copyright  2024 Your Organization
+ * @copyright  2025 Alonso Arias <soporte@ingeweb.co>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -30,7 +30,7 @@ defined('MOODLE_INTERNAL') || die();
  * Provides links to custom reports for certificates and user progress.
  *
  * @package    block_reports_custom
- * @copyright  2024 Your Organization
+ * @copyright  2025 Alonso Arias <soporte@ingeweb.co>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class block_reports_custom extends block_base {
