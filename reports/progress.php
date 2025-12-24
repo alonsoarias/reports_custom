@@ -41,10 +41,14 @@ $startdate = optional_param('startdate', '', PARAM_TEXT);
 $enddate = optional_param('enddate', '', PARAM_TEXT);
 $format = optional_param('format', 'excel', PARAM_ALPHA);
 $page = optional_param('page', 0, PARAM_INT);
+$perpage = optional_param('perpage', 100, PARAM_INT);
 $download = optional_param('download', '', PARAM_TEXT);
 
-// Pagination settings.
-$perpage = 100;
+// Validate perpage value.
+$validperpageoptions = [10, 25, 50, 100, 200, 500];
+if (!in_array($perpage, $validperpageoptions)) {
+    $perpage = 100;
+}
 
 // Get allowed categories for current user.
 $allowedcategories = block_reports_custom_get_allowed_categories_for_user($USER->id);
@@ -197,22 +201,33 @@ echo '</div>';
 
 echo '</div>'; // End form-row.
 
-// Row 2: ID number and dates.
+// Row 2: ID number, dates and records per page.
 echo '<div class="form-row">';
 
-echo '<div class="form-group col-md-4">';
+echo '<div class="form-group col-md-3">';
 echo '<label for="idnumber">' . get_string('idnumber', 'block_reports_custom') . '</label>';
 echo '<input type="text" id="idnumber" name="idnumber" value="' . s($idnumber) . '" class="form-control">';
 echo '</div>';
 
-echo '<div class="form-group col-md-4">';
+echo '<div class="form-group col-md-3">';
 echo '<label for="startdate">' . get_string('start_date', 'block_reports_custom') . '</label>';
 echo '<input type="date" id="startdate" name="startdate" value="' . s($startdate) . '" class="form-control">';
 echo '</div>';
 
-echo '<div class="form-group col-md-4">';
+echo '<div class="form-group col-md-3">';
 echo '<label for="enddate">' . get_string('end_date', 'block_reports_custom') . '</label>';
 echo '<input type="date" id="enddate" name="enddate" value="' . s($enddate) . '" class="form-control">';
+echo '</div>';
+
+// Records per page selector.
+echo '<div class="form-group col-md-3">';
+echo '<label for="perpage">' . get_string('records_per_page', 'block_reports_custom') . '</label>';
+echo '<select id="perpage" name="perpage" class="form-control">';
+foreach ($validperpageoptions as $option) {
+    $selected = ($perpage == $option) ? ' selected' : '';
+    echo '<option value="' . $option . '"' . $selected . '>' . $option . '</option>';
+}
+echo '</select>';
 echo '</div>';
 
 echo '</div>'; // End form-row.
@@ -297,6 +312,7 @@ echo '<input type="hidden" name="usertype" value="' . s($usertype) . '">';
 echo '<input type="hidden" name="idnumber" value="' . s($idnumber) . '">';
 echo '<input type="hidden" name="startdate" value="' . s($startdate) . '">';
 echo '<input type="hidden" name="enddate" value="' . s($enddate) . '">';
+echo '<input type="hidden" name="perpage" value="' . s($perpage) . '">';
 
 echo '<div class="form-group mr-2">';
 echo '<label for="format" class="mr-2">' . get_string('option_download_format', 'block_reports_custom') . ':</label>';
@@ -322,6 +338,7 @@ $baseurl = new moodle_url('/blocks/reports_custom/reports/progress.php', [
     'idnumber' => $idnumber,
     'startdate' => $startdate,
     'enddate' => $enddate,
+    'perpage' => $perpage,
 ]);
 echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
 

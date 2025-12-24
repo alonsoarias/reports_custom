@@ -78,6 +78,8 @@ $string['total_records'] = 'Total de Registros';
 $string['idnumber'] = 'Número de Identificación';
 $string['start_date'] = 'Fecha de Inicio';
 $string['end_date'] = 'Fecha de Fin';
+$string['records_per_page'] = 'Registros por página';
+$string['show_records'] = 'Mostrar';
 
 // Configuración.
 $string['settings_restrictions_heading'] = 'Restricciones de Rol-Categoría';

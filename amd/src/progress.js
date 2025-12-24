@@ -128,6 +128,16 @@ define([
             });
         }
 
+        // Records per page selector.
+        var perpageSelect = this.form.querySelector('#perpage');
+        if (perpageSelect) {
+            perpageSelect.addEventListener('change', function() {
+                // Reset to page 0 when changing perpage.
+                self.filterManager.setFilterValue('page', '0');
+                self.updateReport();
+            });
+        }
+
         // Pagination links.
         this.setupPaginationListeners();
     };

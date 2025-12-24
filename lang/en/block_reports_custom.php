@@ -78,6 +78,8 @@ $string['total_records'] = 'Total Records';
 $string['idnumber'] = 'ID Number';
 $string['start_date'] = 'Start Date';
 $string['end_date'] = 'End Date';
+$string['records_per_page'] = 'Records per page';
+$string['show_records'] = 'Show';
 
 // Settings.
 $string['settings_restrictions_heading'] = 'Role-Category Restrictions';
