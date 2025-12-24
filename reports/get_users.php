@@ -1,50 +1,56 @@
 <?php
-require_once('../../../config.php');
-require_once('../lib.php');
-require_login();
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * AJAX endpoint to get enrolled users.
+ *
+ * @package    block_reports_custom
+ * @copyright  2024 Your Organization
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+define('AJAX_SCRIPT', true);
+
+require_once('../../../config.php');
+require_once($CFG->dirroot . '/blocks/reports_custom/lib.php');
+
+// Require login and capability.
+require_login();
+require_capability('block/reports_custom:viewreports', context_system::instance());
+
+// Get parameters.
 $courseid = optional_param('course', 0, PARAM_INT);
 $categoryid = optional_param('category', 0, PARAM_INT);
 $usertype = optional_param('usertype', '', PARAM_TEXT);
 
-// Obtener las categorías permitidas para el usuario actual
-$allowedCategories = get_allowed_categories_for_user($USER->id);
+// Get allowed categories for current user.
+$allowedcategories = block_reports_custom_get_allowed_categories_for_user($USER->id);
 
-$params = [];
-$sql = "SELECT DISTINCT u.id, CONCAT(u.firstname, ' ', u.lastname) AS fullname
-        FROM {user} u
-        JOIN {user_enrolments} ue ON ue.userid = u.id
-        JOIN {enrol} e ON e.id = ue.enrolid
-        JOIN {course} c ON c.id = e.courseid";
+// Get users with security.
+$users = block_reports_custom_get_enrolled_users($courseid, $categoryid, $usertype, $allowedcategories);
 
-$where = ["u.deleted = 0"];
-
-if ($courseid) {
-    $where[] = "e.courseid = :courseid";
-    $params['courseid'] = $courseid;
-} elseif ($categoryid) {
-    $where[] = "c.category = :categoryid";
-    $params['categoryid'] = $categoryid;
+// Format output.
+$result = [];
+foreach ($users as $user) {
+    $result[] = [
+        'id' => $user->id,
+        'fullname' => $user->fullname,
+    ];
 }
 
-if ($usertype) {
-    $sql .= " LEFT JOIN {user_info_data} d1 ON d1.userid = u.id
-              LEFT JOIN {user_info_field} f1 ON d1.fieldid = f1.id AND f1.shortname = 'user_type'";
-    $where[] = "(d1.data = :usertype OR (d1.data IS NULL AND :usertype = 'No asignado'))";
-    $params['usertype'] = $usertype;
-}
-
-// Aplicar restricciones de categorías permitidas
-if ($allowedCategories !== null) {
-    $where[] = "c.category IN (" . implode(',', $allowedCategories) . ")";
-}
-
-if (!empty($where)) {
-    $sql .= " WHERE " . implode(" AND ", $where);
-}
-
-$sql .= " ORDER BY fullname ASC";
-
-$users = $DB->get_records_sql($sql, $params);
-
-echo json_encode(array_values($users));
+// Return JSON response.
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode($result);

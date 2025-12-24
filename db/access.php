@@ -1,39 +1,66 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Capabilities for block_reports_custom.
+ *
+ * @package    block_reports_custom
+ * @copyright  2024 Your Organization
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 defined('MOODLE_INTERNAL') || die();
 
 $capabilities = [
+    // Capability to add a block instance.
     'block/reports_custom:addinstance' => [
         'riskbitmask' => RISK_SPAM | RISK_XSS,
         'captype' => 'write',
-        'contextlevel' => CONTEXT_BLOCK,  // Correctamente configurado para el contexto de bloque
+        'contextlevel' => CONTEXT_BLOCK,
         'archetypes' => [
-            'manager' => CAP_ALLOW,  // Solo los gestores pueden añadir instancias del bloque
+            'manager' => CAP_ALLOW,
         ],
-        'clonepermissionsfrom' => 'moodle/site:manageblocks',  // Clonar permisos de manageblocks
+        'clonepermissionsfrom' => 'moodle/site:manageblocks',
     ],
 
+    // Capability to add block to My Moodle / Dashboard.
     'block/reports_custom:myaddinstance' => [
         'riskbitmask' => RISK_SPAM | RISK_XSS,
         'captype' => 'write',
-        'contextlevel' => CONTEXT_BLOCK,  // Aplicable también a CONTEXT_BLOCK
+        'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
-            'manager' => CAP_ALLOW,  // Solo los gestores pueden añadir instancias del bloque en su página 'Mi Moodle'
+            'manager' => CAP_ALLOW,
         ],
     ],
 
-    'block/reports_custom:viewreports' => [
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_SYSTEM,  // Usando el contexto del sistema para la visualización de reportes
-        'archetypes' => [
-            'manager' => CAP_ALLOW,  // Solo los gestores tienen permiso para ver los reportes
-        ],
-    ],
+    // Capability to view the block.
     'block/reports_custom:view' => [
         'captype' => 'read',
         'contextlevel' => CONTEXT_BLOCK,
         'archetypes' => [
             'manager' => CAP_ALLOW,
-        ]
+        ],
+    ],
+
+    // Capability to view and access the reports.
+    'block/reports_custom:viewreports' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => [
+            'manager' => CAP_ALLOW,
+        ],
     ],
 ];
